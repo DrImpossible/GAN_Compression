@@ -1,48 +1,90 @@
+import torch
+from torch.autograd import Variable
+from utils import AverageMeter
+from utils import precision
+import torch.nn as nn
 
+import utils
+import torch.nn.functional as F
+import math
+import time
 
-#------------------------------------------------------------
+class Trainer():
+    def __init__(self, model, criterion, optimizer, opt, logger):
+		self.model = model
+        self.criterion = criterion
+        self.optimizer = optimizer
+        self.logger = logger
+        self.batch_time = AverageMeter()
+        self.data_time = AverageMeter()
+        self.losses = AverageMeter()
+        self.top1 = AverageMeter()
+        self.top5 = AverageMeter()
 
-for epoch in range(500):
-	print('*****Epoch ', epoch)
+	def train(self, trainloader, epoch, opt):
 
-	if(epoch==adv_loss_wakeup_epoch):
-	    print('Saving..')
-	    state = {
-	        'smallnet': smallnet.module if use_cuda else net,
-	        'discr': discr.module if use_cuda else net,
-	        'gen_acc': gen_acc,
-	        'epoch': epoch,
-	    }
-	    if not os.path.isdir('checkpoint'):
-	        os.mkdir('checkpoint')
-	    torch.save(state, './checkpoint/gancoder1.t7')
-	    # best_acc = acc
-	    alpha=recons_loss_coeff_later
-	    beta=adv_loss_coeff_later
-	    smallnet_opt = optim.Adam(smallnet.parameters(),lr=smallnet_lr_later)
-	    discr_opt = optim.Adam(discr.parameters(),lr=discr_lr_later)
+        self.model.train()
+        self.losses.reset()
+        self.top1.reset()
+        self.top5.reset()
+        self.data_time.reset()
+        self.batch_time.reset()
 
-	total_discr_loss = 0
-	total_gen_loss = 0
-	total_adv_loss = 0
-	total_recons_loss = 0
-	total_d_cfier_loss = 0
-	total_g_cfier_loss = 0
-	#train Descriminator
+        end = time.time()
+        for i, (input, target) in enumerate(trainloader, 0):
+			if opt.cuda:
+                input = input.cuda(async=True)
+                target = target.cuda(async=True)
 
-	discr.train()
+            input, target_var = Variable(input), Variable(target)
+			real_or_fake = torch.FloatTensor(input.size(0))
+			if epoch%label_reversal_freq == 0:
+			     real_or_fake.fill_(0)
+			else:
+			     real_or_fake.fill_(1)
+			labels = Variable(real_or_fake.cuda(async=True))
+			self.data_time.update(time.time() - end)
+
+			discr_opt.zero_grad()
+			vgg_feats, logits = vgg(images)
+			outs_discr, outs_dcfier = discr(vgg_feats)
+			disc_loss = criterion_adv(outs_discr,labels)
+			discfier_loss = cfier_coeff_later* criterion_cfierdiscr(outs_dcfier,lbls)
+
+			total_loss = disc_loss + discfier_loss
+			total_loss.backward()
+			discr_opt.step()
+
+			total_discr_loss += disc_loss.data[0]
+			total_d_cfier_loss += discfier_loss[0]
+
+	#if(epoch==adv_loss_wakeup_epoch):
+	#    print('Saving..')
+	#    state = {
+	#        'smallnet': smallnet.module if use_cuda else net,
+	#        'discr': discr.module if use_cuda else net,
+	#        'gen_acc': gen_acc,
+	#        'epoch': epoch,
+	#    }
+	#    if not os.path.isdir('checkpoint'):
+	#        os.mkdir('checkpoint')
+	#    torch.save(state, './checkpoint/gancoder1.t7')
+	#    # best_acc = acc
+	#    alpha=recons_loss_coeff_later
+	#    beta=adv_loss_coeff_later
+	#    smallnet_opt = optim.Adam(smallnet.parameters(),lr=smallnet_lr_later)
+	#    discr_opt = optim.Adam(discr.parameters(),lr=discr_lr_later)
+
+	#total_discr_loss = 0
+	#total_gen_loss = 0
+	#total_adv_loss = 0
+	#total_recons_loss = 0
+	#total_d_cfier_loss = 0
+	#total_g_cfier_loss = 0
+	##train Descriminator
+
+	#discr.train()
 	for batch_i, (imgs,lbls) in enumerate(trainloader):
-		#Real samples
-		images = Variable(imgs)
-		lbls = Variable(lbls)
-		real_or_fake = torch.FloatTensor(images.size(0))
-		if epoch%label_reversal_freq == 0:
-		     real_or_fake.fill_(0)
-		else:
-		     real_or_fake.fill_(1)
-		labels = Variable(real_or_fake)
-		if to_cuda:
-		    images,labels,lbls = images.cuda(), labels.cuda(), lbls.cuda()
 		discr_opt.zero_grad()
 		vgg_feats, logits = vgg(images)
 		if to_cuda:
@@ -145,22 +187,49 @@ for epoch in range(500):
 	update='append'
 	)
 
-	#------Testing-----------
-	smallnet.eval()
-	classifier.eval()
-	vgg.eval()
-	total = 0
-	vgg_correct = 0
-	gen_correct = 0
-	if (epoch+1)%5 == 0:
-		print('Testing--------------------------------------')
-		for batch_i, (imgs,lbls) in enumerate(testloader):
-			images = imgs.cuda()
-			labels = lbls.cuda()
-			# labels = lbls
-			images = Variable(images)
-			vgg_feats, vgg_outputs = vgg(images)
-			gen_feats = smallnet(images)
+class Validator():
+    def __init__(self, model, criterion, opt, logger):
+
+        self.model = model
+        self.criterion = criterion
+        self.logger = logger
+        self.batch_time = AverageMeter()
+        self.data_time = AverageMeter()
+        self.losses = AverageMeter()
+        self.top1 = AverageMeter()
+        self.top5 = AverageMeter()
+
+    def validate(self, valloader, epoch, opt):
+
+        self.model.eval()
+        self.losses.reset()
+        self.top1.reset()
+        self.top5.reset()
+        self.data_time.reset()
+        self.batch_time.reset()
+        end = time.time()
+		#------Testing-----------
+		smallnet.eval()
+		classifier.eval()
+		vgg.eval()
+		total = 0
+		vgg_correct = 0
+		gen_correct = 0
+		if (epoch+1)%5 == 0:
+			print('Testing--------------------------------------')
+			for batch_i, (imgs,lbls) in enumerate(testloader):
+
+
+        for i, (input, target) in enumerate(valloader, 0):
+			if opt.cuda:
+                input = input.cuda(async=True)
+                target = target.cuda(async=True)
+
+			input_var, target_var = Variable(input, volatile=True), Variable(target, volatile=True)
+			self.data_time.update(time.time() - end)
+
+			vgg_feats, vgg_outputs = vgg(input_var)
+			gen_feats = smallnet(input_var)
 
 			vgg_outputs = classifier(vgg_feats)
 			gen_outputs = classifier(gen_feats)
@@ -176,9 +245,17 @@ for epoch in range(500):
 		print('Test Accuracy of Generator: %.2f %%' % (100.0 * gen_correct / total))
 		gen_acc = (100.0 * gen_correct / total)
 
-		#visdom accuracy
-		viz.line(X=torch.ones((1, 2)).cpu() * epoch,
-		        Y=np.reshape(np.array([(100.0 * vgg_correct / total),(100.0 * gen_correct / total)]),(1,2)),
-		win=cfier_plots,
-		update='append'
-		)
+
+		if opt.tensorboard:
+            self.logger.scalar_summary('vgg_acc', (100.0 * vgg_correct / total), epoch)
+            self.logger.scalar_summary('gen_acc', (100.0 * gen_correct / total), epoch)
+
+		print('Val: [{0}]\t'
+              'Time {batch_time.sum:.3f}\t'
+              'Data {data_time.sum:.3f}\t'
+              'Loss {loss.avg:.3f}\t'
+              'Prec@1 {top1.avg:.4f}\t'
+              'Prec@5 {top5.avg:.4f}\t'.format(
+               epoch, batch_time=self.batch_time,
+               data_time= self.data_time, loss=self.losses,
+               top1=self.top1, top5=self.top5))
