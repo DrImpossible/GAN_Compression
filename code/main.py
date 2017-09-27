@@ -20,13 +20,14 @@ from tensorboard_logger import Logger
 torch.manual_seed(np.random.randint(1,1000))
 torch.cuda.manual_seed(np.random.randint(50,100))
 
+#Incorporate it sometime
 fake_sample_range = (0.0,0.3)
 real_sample_range = (0.7,1.1)
 
 parser = opts.myargparser()
 
 def main():
-    global opt, best_prec1
+    global opt, best_studentprec1
     cudnn.benchmark = True
 
     opt = parser.parse_args()
@@ -34,21 +35,22 @@ def main():
     logger = Logger(opt.logdir)
 
     print(opt)
-    best_error = 1e10
-    best_acc = 0
+    best_studentprec1 = 0
 
-    print('Loading pretrained model')
+    print('Loading models...')
     teacher = init.load_model(opt,'teacher')
-    classifier = init.load_model(opt,'classifier')
     student = init.load_model(opt,'student')
+    classifier = init.load_model(opt,'classifier')
     discriminator = init.load_model(opt,'discriminator')
 
+    #Write the code to classify it in the 11th class
     teacher, criterion, optimizer = init.setup(teacher,opt,'teacher')
     student, classifycriterion, optimizer = init.setup(student,opt,'student')
     discriminator, classifycriterion, optimizer = init.setup(discriminator,opt,'discriminator')
     classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier')
 
-    teacher = teacher.features()
+    #Remove the last layer from the network and use the rest layers as is.
+
     # Make parameters of teacher network non-trainable
     for p in teacher.parameters():
         p.requires_grad= False
@@ -69,7 +71,6 @@ def main():
         else:
             print("=> no checkpoint found at '{}'".format(opt.resume))
 
-    cudnn.benchmark = True
     dataloader = init_data.load_data(opt)
     train_loader = dataloader.train_loader
     val_loader = dataloader.val_loader
@@ -83,8 +84,8 @@ def main():
         if opt.tensorboard:
             logger.scalar_summary('learning_rate', opt.lr, epoch)
 
-        acc = validator.validate(val_loader, epoch, opt)
-        best_acc = max(acc, best_acc)
+        student_prec1 = validator.validate(val_loader, epoch, opt)
+        best_studentprec1 = max(student_prec1, best_studentprec1)
         init.save_checkpoint(opt, student, teacher, discriminator, classifier, classifycriterion, adversarialcriterion, softcriterion, studentoptimizer, discriminatoroptimizer, opt, logger, best_acc, epoch)
 
         print('Best accuracy: [{0:.3f}]\t'.format(best_acc))

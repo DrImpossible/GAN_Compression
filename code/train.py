@@ -44,73 +44,74 @@ class Trainer():
         end = time.time()
         for i, (input, target) in enumerate(trainloader, 0):
             #Generate fake samples
-            isFake = torch.ones(input.size(0))
+            isFakeTeacher = torch.ones(input.size(0))
 
 			if epoch%label_reversal_freq == 0:
-			     isFake.fill_(0)
+			     isFakeTeacher.fill_(0)
 
 			if opt.cuda:
                 input = input.cuda(async=True)
                 target = target.cuda(async=True)
-                labels = isFake.cuda(async=True)
+                labels = isFakeTeacher.cuda(async=True)
 
             input, target_var, labels = Variable(input), Variable(target), Variable(labels)
 
 			self.data_time.update(time.time() - end)
 
+            #Training the discriminator using Teacher
 			discOptim.zero_grad()
 
 			teacher_feats, logits = teacher(input)
-			y_discriminator, y_dcfier = discriminator(teacher_feats)
-			disc_loss = adversarialcriterion(y_discriminator,labels)
-			discfier_loss = cfier_coeff_later* criterion_cfierdiscr(y_dcfier,target_var)
+			isReal, y_discriminator = discriminator(teacher_feats)
+			adversarialLoss = adversarialCriterion(isReal,labels)
+			crosssentropyLoss = opt.weight_classify * classifyCriterion(y_discriminator,target_var)
 
-			total_loss = disc_loss + discfier_loss
-			total_loss.backward()
+			totalDiscLoss = adversarialLoss + crosssentropyLoss
+			totalDiscLoss.backward()
 			discOptim.step()
 
-			total_discr_loss += disc_loss.data[0]
-			total_d_cfier_loss += discfier_loss[0]
+            self.adversarialLoss.update(adversarialLoss.data[0], input.size(0))
+            self.crosssentropyLoss.update(crosssentropyLoss.data[0], input.size(0))
 
-            #Fake samples
-    		student_feats = student(input)
-    		discOptim.zero_grad()
-    		outs_discr, outs_dcfier = discriminator(student_feats.detach())  #To avoid computing gradients in Generator (smallnet)
+            #Training the discriminator using student
+            discOptim.zero_grad()
 
-    		disc_loss = adversarialcriterion(outs_discr,labels)
-    		discfier_loss = cfier_coeff_later* criterion_cfierdiscr(outs_dcfier,target_var)
-    		total_loss = disc_loss + discfier_loss
-    		total_loss.backward()
-    		discOptim.step()
+            isFakeStudent = 1 - isFakeTeacher
+    		isFakeStudent = Variable(isFakeStudent)
+            student_feats = student(input)
+    		isReal, y_discriminator = discriminator(student_feats.detach())  #To avoid computing gradients in Generator (smallnet)
 
-    		total_discr_loss += disc_loss.data[0]
-    		total_d_cfier_loss += discfier_loss[0]
+    		adversarialLoss = adversarialCriterion(isReal,labels)
+			crosssentropyLoss = opt.weight_classify * classifyCriterion(y_discriminator,target)
+    		totalDiscLoss = adversarialLoss + crosssentropyLoss
+			totalDiscLoss.backward()
+			discOptim.step()
 
-    		# Train student network
+    	    self.adversarialLoss.update(adversarialLoss.data[0], input.size(0))
+            self.crosssentropyLoss.update(crosssentropyLoss.data[0], input.size(0))
+
+    		# Training the student network
     		studOptim.zero_grad()
     		student_feats = student(input)
 
-    		out_discr, outs_dcfier = discriminator(student_feats)
+    		isReal, y_discriminator = discriminator(student_feats)  #To avoid computing gradients in Generator (smallnet)
 
-    		isFake = torch.ones(out_discr.size(0))
-    		labels = Variable(isFake)
-
-    		#if to_cuda:
-    		#    out_discr,labels,outs_dcfier = out_discr.cuda(), labels.cuda(), outs_dcfier.cuda()
+    		isFake = torch.ones(isReal.size(0))
+    		isFake = Variable(isFake)
 
     		# disc_loss = criterion_adv(out_discr,labels)
-    		adv_loss = adversarialcriterion(out_discr,labels)
-    		recons_loss = criterion_rcns(feats,vgg_feats)
-    		discfier_loss = cfier_coeff_later* criterion_cfierdiscr(outs_dcfier,target_var)
+    		adversarialLoss = adversarialCriterion(isReal,isFake)
+    		reconstructionLoss = reconsructionCriterion(student_feats,teacher_feats)
+    		crosssentropyLoss = opt.weight_classify * classifyCriterion(y_discriminator,target)
 
-    		gen_loss = opt.alpha*recons_loss + opt.beta*adv_loss + discfier_loss
-    		gen_loss.backward()
+    		generatorLoss = opt.weight_reconstruction * reconstructionLoss + opt.weight_adversarial * adversarialLoss + crosssentropyLoss
+    		generatorLoss.backward()
     		studOptim.step()
 
-    		total_gen_loss += gen_loss.data[0]
-    		total_adv_loss += adv_loss.data[0]
-    		total_recons_loss += recons_loss.data[0]
-    		total_g_cfier_loss += discfier_loss.data[0]
+             self.adversarialLoss.update(adversarialLoss.data[0], input.size(0))
+             self.crosssentropyLoss.update(crosssentropyLoss.data[0], input.size(0))
+             self.reconstructionLoss.update(reconstructionLoss.data[0], input.size(0))
+             self.generatorLoss.update(crosssentropyLoss.data[0], input.size(0))
 
     	    if opt.verbose == True and i % opt.printfreq == 0:
                 print('Train: [{0}][{1}/{2}]\t'
@@ -127,6 +128,10 @@ class Trainer():
         if opt.tensorboard:
             self.logger.scalar_summary('train_loss', self.losses.avg, epoch)
             self.logger.scalar_summary('train_acc', self.top1.avg, epoch)
+            self.logger.scalar_summary('train_loss', self.losses.avg, epoch)
+            self.logger.scalar_summary('train_acc', self.top1.avg, epoch)
+            self.logger.scalar_summary('train_loss', self.losses.avg, epoch)
+            self.logger.scalar_summary('train_acc', self.top1.avg, epoch)
 
         print('Train: [{0}]\t'
         'Time {batch_time.sum:.3f}\t'
@@ -137,31 +142,6 @@ class Trainer():
         epoch, batch_time=self.batch_time,
         data_time= self.data_time, loss=self.losses,
         top1=self.top1, top5=self.top5))
-
-	#if(epoch==adv_loss_wakeup_epoch):
-	#    print('Saving..')
-	#    state = {
-	#        'smallnet': smallnet.module if use_cuda else net,
-	#        'discr': discr.module if use_cuda else net,
-	#        'gen_acc': gen_acc,
-	#        'epoch': epoch,
-	#    }
-	#    if not os.path.isdir('checkpoint'):
-	#        os.mkdir('checkpoint')
-	#    torch.save(state, './checkpoint/gancoder1.t7')
-	#    # best_acc = acc
-	#    alpha=recons_loss_coeff_later
-	#    beta=adv_loss_coeff_later
-	#    smallnet_opt = optim.Adam(smallnet.parameters(),lr=smallnet_lr_later)
-	#    discr_opt = optim.Adam(discr.parameters(),lr=discr_lr_later)
-
-	#total_discr_loss = 0
-	#total_gen_loss = 0
-	#total_adv_loss = 0
-	#total_recons_loss = 0
-	#total_d_cfier_loss = 0
-	#total_g_cfier_loss = 0
-	##train Descriminator
 
 class Validator():
     def __init__(student, teacher, discriminator, classifier, classifycriterion, adversarialcriterion, softcriterion, studentoptimizer, discriminatoroptimizer, opt, logger):
@@ -193,17 +173,17 @@ class Validator():
 			input, target_var = Variable(input, volatile=True), Variable(target, volatile=True)
 			self.data_time.update(time.time() - end)
 
-			vgg_feats, vgg_outputs = self.teacher(input)
-			gen_feats = self.student(input)
+			teacher_feats, teacher_outputs = self.teacher(input)
+			student_feats, student_outputs = self.student(input)
 
-			vgg_outputs = self.classifier(vgg_feats)
-			gen_outputs = self.classifier(gen_feats)
+			teacher_target = self.classifier(teacher_feats)
+			student_target = self.classifier(student_feats)
 
-            teacherprec1, teacherprec5 = precision(vgg_outputs.data, target, topk=(1,5))
-            studentprec1, studentprec5 = precision(gen_outputs.data, target, topk=(1,5))
+            teacherprec1, teacherprec5 = precision(teacher_target.data, target, topk=(1,5))
+            studentprec1, studentprec5 = precision(student_target.data, target, topk=(1,5))
 
-            self.teachertop1.update(prec1[0], input.size(0))
-            self.studenttop1.update(prec5[0], input.size(0))
+            self.teachertop1.update(teacherprec1[0], input.size(0))
+            self.studenttop1.update(studentprec1[0], input.size(0))
 
 		if opt.tensorboard:
             self.logger.scalar_summary('Teacher Accuracy', self.teachertop1.avg, epoch)

@@ -15,7 +15,7 @@ def setup(model, opt, type):
         criterion = nn.BCELoss().cuda()
     elif type == "teacher":
         criterion = nn.SmoothL1Loss().cuda()
-    elif type == "student":
+    elif type == "student" or type == "classifier":
         criterion = nn.CrossEntropyLoss(size_average=True).cuda()
 
     if opt.optimType == 'sgd':
@@ -65,7 +65,7 @@ def load_model(opt,type):
             model = torch.load(opt.pretrained_filedir)
         else:
             if type == 'student':
-                model = smallnet.Net()
+                model = torch.load(opt.pretrained_filedir)
                 if opt.cuda:
                     model = model.cuda()
             elif type == 'discriminator':
