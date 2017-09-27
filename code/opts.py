@@ -41,9 +41,10 @@ def myargparser():
     parser.add_argument('--weightDecay', default=0, type=float, help='weight decay (Default: 1e-4)')
 
     #extra model stuff
-    parser.add_argument('--model_def', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
-    parser.add_argument('--model_def', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
-    parser.add_argument('--model_def', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
+    parser.add_argument('--teacherarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
+    parser.add_argument('--generatorarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
+    parser.add_argument('--discriminatorarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
+    parser.add_argument('--classifierarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
     parser.add_argument('--name', required=True, type=str, help='name of experiment')
 
     #default

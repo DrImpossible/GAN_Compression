@@ -9,18 +9,14 @@ import utils
 import os
 import shutil
 
-def setup(model, opt):
+def setup(model, opt, type):
 
-    if opt.criterion == "l1":
+    if type == "discriminator":
         criterion = nn.BCELoss().cuda()
-    elif opt.criterion == "smoothl1loss":
+    elif type == "teacher":
         criterion = nn.SmoothL1Loss().cuda()
-    elif opt.criterion == "crossentropy":
+    elif type == "student":
         criterion = nn.CrossEntropyLoss(size_average=True).cuda()
-    elif opt.criterion == "hingeEmbedding":
-        criterion = nn.HingeEmbeddingLoss().cuda()
-    elif opt.criterion == "tripletmargin":
-        criterion = nn.TripletMarginLoss(margin = opt.margin, swap = opt.anchorswap).cuda()
 
     if opt.optimType == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr = opt.lr, momentum = opt.momentum, nesterov = opt.nesterov, weight_decay = opt.weightDecay)
@@ -58,30 +54,25 @@ def resumer(opt, model, optimizer):
 
         return model, optimizer, opt, best_prec1
 
-def load_model(opt):
+def load_model(opt,type):
 
-    if opt.from_modelzoo:
-        if opt.pretrained:
-            print("=> using pre-trained model '{}'".format(opt.arch))
+    if type == "teacher":
+            print("=> using pre-trained model '{}'".format(opt.teacherarch))
             model = models.__dict__[opt.model_def](pretrained=True)
-        else:
-            print("=> creating model '{}'".format(opt.arch))
-            model = models.__dict__[opt.model_def]()
-
         return model
     else:
         if opt.pretrained_file != '':
             model = torch.load(opt.pretrained_filedir)
         else:
-            if opt.model_def == 'smallnet':
+            if type == 'student':
                 model = smallnet.Net()
                 if opt.cuda:
                     model = model.cuda()
-            elif opt.model_def == 'discriminator':
+            elif type == 'discriminator':
                 model = discriminator.Net()
                 if opt.cuda:
                     model = model.cuda()
-            elif opt.model_def == 'classifier':
+            elif type == 'classifier':
                 model = classifier.Net()
                 if opt.cuda:
                     model = model.cuda()

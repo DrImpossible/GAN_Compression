@@ -38,27 +38,30 @@ def main():
     best_acc = 0
 
     print('Loading pretrained model')
+    teacher = init.load_model(opt,'teacher')
+    classifier = init.load_model(opt,'classifier')
+    student = init.load_model(opt,'student')
+    discriminator = init.load_model(opt,'discriminator')
 
-    checkpoint = torch.load('./checkpoint/ckpt.t7')
-    vgg = checkpoint['net']
-    vgg = vgg.cuda()
+    teacher, criterion, optimizer = init.setup(teacher,opt,'teacher')
+    student, classifycriterion, optimizer = init.setup(student,opt,'student')
+    discriminator, classifycriterion, optimizer = init.setup(discriminator,opt,'discriminator')
+    classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier')
 
+    teacher = teacher.features()
     # Make parameters of teacher network non-trainable
-    for p in vgg.parameters():
+    for p in teacher.parameters():
         p.requires_grad= False
 
-    classifier = Classifier()
-    classifier.fc1.weight = vgg.fc1.weight
-    classifier.fc1.bias = vgg.fc1.bias
-    classifier.fc2.weight = vgg.fc2.weight
-    classifier.fc2.bias = vgg.fc2.bias
+    classifier.fc1.weight = teacher.fc1.weight
+    classifier.fc1.bias = teacher.fc1.bias
+    classifier.fc2.weight = teacher.fc2.weight
+    classifier.fc2.bias = teacher.fc2.bias
 
-    model = init.load_model(opt)
-    model, criterion, optimizer = init.setup(model,opt)
     print(model)
 
-    trainer = train.Trainer(model, criterion, optimizer, opt, logger)
-    validator = train.Validator(model, criterion, opt, logger)
+    trainer = train.Trainer(student, teacher, discriminator, classifier, classifycriterion, adversarialcriterion, softcriterion, studentoptimizer, discriminatoroptimizer, opt, logger)
+    validator = train.Validator(student, teacher, discriminator, classifier, classifycriterion, adversarialcriterion, softcriterion, studentoptimizer, discriminatoroptimizer, opt, logger)
 
     if opt.resume:
         if os.path.isfile(opt.resume):
@@ -82,25 +85,9 @@ def main():
 
         acc = validator.validate(val_loader, epoch, opt)
         best_acc = max(acc, best_acc)
-        init.save_checkpoint(opt, model, optimizer, best_acc, epoch)
+        init.save_checkpoint(opt, student, teacher, discriminator, classifier, classifycriterion, adversarialcriterion, softcriterion, studentoptimizer, discriminatoroptimizer, opt, logger, best_acc, epoch)
 
         print('Best accuracy: [{0:.3f}]\t'.format(best_acc))
 
 if __name__ == '__main__':
     main()
-
-
-alpha=recons_loss_coeff_init  #coefficient for reconstruction loss
-beta=adv_loss_coeff_init   #coefficient for adverserial loss
-gen_acc = 0
-
-criterion_adv = nn.BCELoss()
-criterion_clfr = nn.CrossEntropyLoss(size_average=True)
-criterion_rcns = nn.SmoothL1Loss()
-criterion_cfierdiscr = nn.CrossEntropyLoss(size_average=True)
-
-smallnet = torch.nn.DataParallel(smallnet, device_ids=range(torch.cuda.device_count()))
-discr = torch.nn.DataParallel(discr, device_ids=range(torch.cuda.device_count()))
-net = torch.nn.DataParallel(vgg, device_ids=range(torch.cuda.device_count()))
-smallnet_opt = optim.Adam(smallnet.parameters(),lr=smallnet_lr_init)
-discr_opt = optim.Adam(discr.parameters(),lr=discr_lr_init)
