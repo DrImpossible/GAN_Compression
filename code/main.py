@@ -53,14 +53,7 @@ def main():
     student, classifyCriterion, studOptim = init.setup(student,opt,'student')
     discriminator, advCriterion, discOptim = init.setup(discriminator,opt,'discriminator')
     derivativeCriterion = nn.SmoothL1Loss().cuda()
-    #classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier')
-
-    #Remove the last layer from the network and use the rest layers as is.
-
-    #classifier.fc1.weight = teacher.fc1.weight
-    #classifier.fc1.bias = teacher.fc1.bias
-    #classifier.fc2.weight = teacher.fc2.weight
-    #classifier.fc2.bias = teacher.fc2.bias
+    #classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier'
 
     trainer = train.Trainer(student, teacher, discriminator,classifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
     validator = train.Validator(student, teacher, discriminator, opt, logger)
