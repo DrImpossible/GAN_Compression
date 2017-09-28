@@ -207,9 +207,10 @@ class Validator():
         self.studenttop1.reset()
         self.data_time.reset()
         self.batch_time.reset()
-        end = time.time()
+
 
         for i, (input, target) in enumerate(valloader, 0):
+            end = time.time()
             if opt.cuda:
                 input = input.cuda(async=True)
                 target = target.cuda(async=True)

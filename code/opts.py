@@ -63,10 +63,6 @@ def myargparser():
     parser.add_argument('--weight_adversarial', default=0.5, type=float,  help='compression rate in transition stage (default: 0.5)')
     parser.add_argument('--weight_derivative', default=0.2, type=float,  help='compression rate in transition stage (default: 0.5)')
 
-    parser.add_argument('--discr_lr_later', default=100, type=int, help='total number of layers (default: 100)')
-    parser.add_argument('--adv_loss_coeff_later', default=2, type=int, help='factor to compress by')
-    parser.add_argument('--recons_loss_coeff_later', default=12, type=int, help='number of new channels per layer (default: 12)')
-    parser.add_argument('--cfier_coeff_later', default=0, type=float, help='dropout probability (default: 0.0)')
     parser.add_argument('--label_reversal_freq', dest='augment', action='store_false', help='whether to use standard augmentation (default: True)')
 
     parser.add_argument('--from_modelzoo', action='store_true')
