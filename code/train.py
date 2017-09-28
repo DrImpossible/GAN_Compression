@@ -68,7 +68,8 @@ class Trainer():
 
             teacher_out = self.teacher(input)
             isReal, y_discriminator = self.discriminator(teacher_out)
-
+            print(teacher_out.size(),target.size())
+            print(target)
             teacherprec1, teacherprec5 = precision(teacher_out.data, target, topk=(1,5))
 
             adversarialLoss = self.advCriterion(isReal,labels)
