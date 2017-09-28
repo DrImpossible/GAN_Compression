@@ -47,8 +47,9 @@ class Trainer():
         self.teachertop1.reset()
         self.studenttop1.reset()
 
-        end = time.time()
+
         for i, (input, target) in enumerate(trainloader, 0):
+            end = time.time()
             #Generate fake samples
             isFakeTeacher = torch.ones(input.size(0))
 
@@ -117,6 +118,8 @@ class Trainer():
             generatorLoss = opt.weight_reconstruction * reconstructionLoss + opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
             generatorLoss.backward()
             self.studOptim.step()
+
+            self.batch_time.update(time.time() - end)
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
             self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
@@ -202,7 +205,7 @@ class Validator():
 
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-
+            self.batch_time.update(time.time() - end)
             #teacher_target = self.classifier(teacher_feats)
             #student_target = self.classifier(student_feats)
 
