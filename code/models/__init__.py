@@ -1,21 +1,19 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import torchvision.models as models
-import models.smallnet as smallnet
+import models.student as student
+import models.teacher as teacher
 import models.discriminator as discriminator
-import models.classifier as classifier
 import utils
 import os
 import shutil
 
 def setup(model, opt, type):
-
     if type == "discriminator":
         criterion = nn.BCELoss().cuda()
     elif type == "teacher":
         criterion = nn.SmoothL1Loss().cuda()
-    elif type == "student" or type == "classifier":
+    elif type == "student": #or type == "classifier":
         criterion = nn.CrossEntropyLoss(size_average=True).cuda()
 
     if opt.optimType == 'sgd':
@@ -28,51 +26,54 @@ def setup(model, opt, type):
 
     return model, criterion, optimizer
 
-def save_checkpoint(opt, model, optimizer, best_acc, epoch):
-
+def save_checkpoint(opt, teacher, student, discriminator, studOptim, discOptim, best_acc, epoch):
     state = {
         'epoch': epoch + 1,
-        'arch': opt.model_def,
-        'state_dict': model.state_dict(),
-        'best_prec1': best_acc,
-        'optimizer' : optimizer.state_dict(),
+        'teacher_state_dict': teacher.state_dict(),
+        'student_state_dict': student.state_dict(),
+        'discriminator_state_dict': discriminator.state_dict(),
+        'best_studentprec1': best_acc,
+        'studentoptimizer' : studOptim.state_dict(),
+        'discriminatoroptimizer' : discOptim.state_dict(),
     }
-    filename = "savedmodels/" + opt.model_def + '_' + opt.name + '_' + "best.pth.tar"
-
+    filename = "savedmodels/" + 'Checkpoint_' + opt.name + '_' + "best.pth.tar"
     torch.save(state, filename)
 
-def resumer(opt, model, optimizer):
-
+def resumer(opt, teacher, student, discriminator, studOptim, discOptim):
     if os.path.isfile(opt.resume):
         print("=> loading checkpoint '{}'".format(opt.resume))
         checkpoint = torch.load(opt.resume)
         opt.start_epoch = checkpoint['epoch']
-        best_prec1 = checkpoint['best_prec1']
-        model.load_state_dict(checkpoint['state_dict'])
-        optimizer.load_state_dict(checkpoint['optimizer'])
+        best_studentprec1 = checkpoint['best_studentprec1']
+        teacher.load_state_dict(checkpoint['state_dict'])
+        student.load_state_dict(checkpoint['state_dict'])
+        discriminator.load_state_dict(checkpoint['state_dict'])
+        studOptim.load_state_dict(checkpoint['optimizer'])
+        discOptim.load_state_dict(checkpoint['optimizer'])
         print("=> loaded checkpoint '{}' (epoch {})".format(opt.resume, checkpoint['epoch']))
 
-        return model, optimizer, opt, best_prec1
+        return  teacher, student, discriminator, studOptim, discOptim, opt, best_studentprec1
 
 def load_model(opt,type):
-
-    if type == "teacher":
-            print("=> using pre-trained model '{}'".format(opt.teacherarch))
-            model = models.__dict__[opt.model_def](pretrained=True)
+        if type == "teacher":
+            checkpoint = torch.load(opt.teacher_filedir)
+            model = teacher.Net()
+            if opt.cuda:
+                model = model.cuda()
+            model.features = torch.nn.DataParallel(model.features)
+            model.load_state_dict(checkpoint['state_dict'])
+        elif type == "student":
+            checkpoint = torch.load(opt.student_filedir)
+            model = student.Net()
+            if opt.cuda:
+                model = model.cuda()
+            model.load_state_dict(checkpoint['state_dict'])
+        elif type == 'discriminator':
+            model = discriminator.Net()
+            if opt.cuda:
+                model = model.cuda()
+        #elif type == 'classifier':
+        #    model = classifier.Net()
+        #    if opt.cuda:
+        #        model = model.cuda()
         return model
-    else:
-        if opt.pretrained_file != '':
-            model = torch.load(opt.pretrained_filedir)
-        else:
-            if type == 'student':
-                model = torch.load(opt.pretrained_filedir)
-                if opt.cuda:
-                    model = model.cuda()
-            elif type == 'discriminator':
-                model = discriminator.Net()
-                if opt.cuda:
-                    model = model.cuda()
-            elif type == 'classifier':
-                model = classifier.Net()
-                if opt.cuda:
-                    model = model.cuda()

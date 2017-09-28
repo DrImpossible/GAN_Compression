@@ -19,15 +19,13 @@ def myargparser():
     parser.add_argument('--epochs', required=True, type=int,help='number of total epochs to run')
     parser.add_argument('--batch-size', required=True, type=int, help='mini-batch size (default: 128)')
     parser.add_argument('--nclasses', help='number of classes', default=0)
-    parser.add_argument('--printfreq', default=200, type=int, help='print frequency (default: 10)')
-    parser.add_argument('--learningratescheduler', default='decayschedular', help='print frequency (default: 10)')
+    parser.add_argument('--printfreq', default=50, type=int, help='print frequency (default: 10)')
+    parser.add_argument('--learningratescheduler', required=True, help='print frequency (default: 10)')
+    parser.add_argument('--revLabelFreq', required=True, type=int, help='print frequency (default: 10)')
 
     #optimizer/criterion stuff
     parser.add_argument('--decayinterval', type=int, help='decays by a power of decay_var in these epochs')
     parser.add_argument('--decaylevel', type=int, help='decays by a power of decaylevel')
-    parser.add_argument('--criterion', default="crossentropy", choices=criterion_choices, type=str, help='Criterion. Options:'+str(criterion_choices))
-    parser.add_argument('--criterion', default="crossentropy", choices=criterion_choices, type=str, help='Criterion. Options:'+str(criterion_choices))
-    parser.add_argument('--criterion', default="crossentropy", choices=criterion_choices, type=str, help='Criterion. Options:'+str(criterion_choices))
     parser.add_argument('--optimType', required=True, choices=optim_choices, type=str, help='Optimizers. Options:'+str(optim_choices))
 
     parser.add_argument('--maxlr', required=True, type=float, help='initial learning rate')
@@ -41,11 +39,9 @@ def myargparser():
     parser.add_argument('--weightDecay', default=0, type=float, help='weight decay (Default: 1e-4)')
 
     #extra model stuff
-    parser.add_argument('--teacherarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
-    parser.add_argument('--generatorarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
-    parser.add_argument('--discriminatorarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
-    parser.add_argument('--classifierarch', required=True, choices=model_def_choices, help='Architectures to be loaded. Options:'+str(model_def_choices))
     parser.add_argument('--name', required=True, type=str, help='name of experiment')
+    parser.add_argument('--teacher_filedir', required=True, type=str, help='name of experiment')
+    parser.add_argument('--student_filedir', required=True, type=str, help='name of experiment')
 
     #default
     parser.add_argument('--cachemode', default=True, help='if cachemode')
@@ -62,11 +58,9 @@ def myargparser():
     parser.add_argument('--pretrained_file', default='')
 
     #Hyperparameters
-    parser.add_argument('--adv_loss_coeff_init', default=12, type=int, help='number of new channels per layer (default: 12)')
-    parser.add_argument('--recons_loss_coeff_init', default=0, type=float, help='dropout probability (default: 0.0)')
-    parser.add_argument('--cfier_coeff_init', dest='augment', action='store_false', help='whether to use standard augmentation (default: True)')
-    parser.add_argument('--adv_loss_wakeup_epoch', default=0.5, type=float,  help='compression rate in transition stage (default: 0.5)')
-    parser.add_argument('--smallnet_lr_later', dest='bottleneck', action='store_false', help='To not use bottleneck block')
+    parser.add_argument('--weight_classify', default=0.3, type=float, help='number of new channels per layer (default: 12)')
+    parser.add_argument('--weight_reconstruction', default=0.4, type=float, help='dropout probability (default: 0.0)')
+    parser.add_argument('--weight_adversarial', default=0.5, type=float,  help='compression rate in transition stage (default: 0.5)')
 
     parser.add_argument('--discr_lr_later', default=100, type=int, help='total number of layers (default: 100)')
     parser.add_argument('--adv_loss_coeff_later', default=2, type=int, help='factor to compress by')

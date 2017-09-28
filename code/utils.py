@@ -65,6 +65,8 @@ def adjust_learning_rate(opt, optimizer, epoch):
         lr = lr * (0.1 ** (epoch // 30))
     elif opt.learningratescheduler == 'cifarschedular':
         lr = opt.lr * (0.1 ** (epoch // 150)) * (0.1 ** (epoch // 225))
+    else:
+        1==1
 
     lr = max(lr,opt.minlr)
     opt.lr = lr
