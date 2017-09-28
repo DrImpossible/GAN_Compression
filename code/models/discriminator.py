@@ -28,4 +28,4 @@ class Net(nn.Module):
         isFakeout = isFakeout.view(isFakeout.size(0))
         print(isFakeout.size())
         classifierout = self.classifier(x)
-        return isFakeout, F.log_softmax(classifierout)
+        return isFakeout, classifierout
