@@ -10,7 +10,7 @@ import math
 import time
 
 class Trainer():
-    def __init__(self, student, teacher, discriminator, classifyCriterion, advCriterion, derivativeCriterion, studOptim, discOptim, opt, logger):
+    def __init__(self, student, teacher, discriminator, classifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger):
         self.opt = opt
         self.logger = logger
         self.discriminator = discriminator
@@ -19,6 +19,7 @@ class Trainer():
         #self.classifier = classifier
         self.classifyCriterion = classifyCriterion
         self.advCriterion = advCriterion
+        self.similarityCriterion = similarityCriterion
         self.derivativeCriterion = derivativeCriterion
         self.studOptim = studOptim
         self.discOptim = discOptim
@@ -30,6 +31,7 @@ class Trainer():
         self.adversariallossLog = AverageMeter()
         self.crossentropylossLog = AverageMeter()
         self.reconstructionlossLog = AverageMeter()
+        self.derivativelossLog = AverageMeter()
         self.totaldisclossLog = AverageMeter()
         self.generatorlossLog = AverageMeter()
 
@@ -42,6 +44,7 @@ class Trainer():
         self.reconstructionlossLog.reset()
         self.totaldisclossLog.reset()
         self.generatorlossLog.reset()
+        self.derivativelossLog.reset()
         self.data_time.reset()
         self.batch_time.reset()
         self.teachertop1.reset()
@@ -68,7 +71,11 @@ class Trainer():
             self.discOptim.zero_grad()
 
             teacher_out = self.teacher(input)
-            isReal, y_discriminator = self.discriminator(teacher_out)
+            crossentropyLoss =  self.classifyCriterion(teacher_out,target_var)
+            teachergrad_params = torch.autograd.grad(crossentropyLoss, self.teacher.parameters(), create_graph=True)
+            #print(teachergrad_params[-1])
+
+            isReal, y_discriminator = self.discriminator(teacher_out.detach())
             #print(teacher_out.size(),target.size())
             #print(target)
             teacherprec1, teacherprec5 = precision(teacher_out.data, target, topk=(1,5))
@@ -76,6 +83,7 @@ class Trainer():
             adversarialLoss = self.advCriterion(isReal,isFakeTeacher)
             crossentropyLoss =  self.classifyCriterion(y_discriminator,target_var)
             totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
+
             totalDiscLoss.backward()
             self.discOptim.step()
 
@@ -112,10 +120,15 @@ class Trainer():
             #print(isReal.size(),isFakeStudent.size())
             # disc_loss = criterion_adv(out_discr,isFakeTeacher)
             adversarialLoss = self.advCriterion(isReal,isFakeStudent)
-            reconstructionLoss = self.derivativeCriterion(student_out,teacher_out)
+            reconstructionLoss = self.similarityCriterion(student_out,teacher_out.detach())
             crossentropyLoss = self.classifyCriterion(y_discriminator,target_var)
 
-            generatorLoss = opt.weight_reconstruction * reconstructionLoss + opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
+            studentgrad_params = torch.autograd.grad(crossentropyLoss, self.student.parameters(), create_graph=True)
+            #print(studentgrad_params[-1])
+            derivativeLoss = self.derivativeCriterion(studentgrad_params[-1],teachergrad_params[-1].detach())
+
+            generatorLoss = opt.weight_reconstruction * reconstructionLoss + opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss +  opt.weight_derivative * derivativeLoss
+
             generatorLoss.backward()
             self.studOptim.step()
 
@@ -127,6 +140,7 @@ class Trainer():
             self.generatorlossLog.update(generatorLoss.data[0], input.size(0))
             self.teachertop1.update(teacherprec1[0], input.size(0))
             self.studenttop1.update(studentprec1[0], input.size(0))
+
 
             if opt.verbose == True and i % opt.printfreq == 0:
                 print('Batch: [{0}][{1}/{2}]\t'

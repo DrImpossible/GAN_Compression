@@ -61,6 +61,7 @@ def myargparser():
     parser.add_argument('--weight_classify', default=0.3, type=float, help='number of new channels per layer (default: 12)')
     parser.add_argument('--weight_reconstruction', default=0.4, type=float, help='dropout probability (default: 0.0)')
     parser.add_argument('--weight_adversarial', default=0.5, type=float,  help='compression rate in transition stage (default: 0.5)')
+    parser.add_argument('--weight_derivative', default=0.2, type=float,  help='compression rate in transition stage (default: 0.5)')
 
     parser.add_argument('--discr_lr_later', default=100, type=int, help='total number of layers (default: 100)')
     parser.add_argument('--adv_loss_coeff_later', default=2, type=int, help='factor to compress by')

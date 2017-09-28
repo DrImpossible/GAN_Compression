@@ -1,5 +1,6 @@
 import os
 import argparse
+import copy
 import numpy as np
 import torch
 import torch.nn as nn
@@ -48,23 +49,20 @@ def main():
     #classifier = init.load_model(opt,'classifier')
 
     #Write the code to classify it in the 11th class
-    teacher, derivativeCriterion, timepass = init.setup(teacher,opt,'teacher')
+    teacher, similarityCriterion, timepass = init.setup(teacher,opt,'teacher')
     student, classifyCriterion, studOptim = init.setup(student,opt,'student')
     discriminator, advCriterion, discOptim = init.setup(discriminator,opt,'discriminator')
+    derivativeCriterion = nn.SmoothL1Loss().cuda()
     #classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier')
 
     #Remove the last layer from the network and use the rest layers as is.
-
-    # Make parameters of teacher network non-trainable
-    for p in teacher.parameters():
-        p.requires_grad= False
 
     #classifier.fc1.weight = teacher.fc1.weight
     #classifier.fc1.bias = teacher.fc1.bias
     #classifier.fc2.weight = teacher.fc2.weight
     #classifier.fc2.bias = teacher.fc2.bias
 
-    trainer = train.Trainer(student, teacher, discriminator,classifyCriterion, advCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
+    trainer = train.Trainer(student, teacher, discriminator,classifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
     validator = train.Validator(student, teacher, discriminator, opt, logger)
 
     if opt.resume:
