@@ -26,6 +26,6 @@ class Net(nn.Module):
         x = self.model(x)
         isFakeout = self.isFake(x)
         isFakeout = isFakeout.view(isFakeout.size(0))
-        print(isFakeout.size())
+#        print(isFakeout.size())
         classifierout = self.classifier(x)
         return isFakeout, classifierout

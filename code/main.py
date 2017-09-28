@@ -36,7 +36,7 @@ def main():
     logger = Logger(opt.logdir)
 
     print(opt)
-    best_studentprec1 = 0
+    best_studentprec1 = 0.0
 
     print('Loading models...')
     teacher = init.load_model(opt,'teacher')

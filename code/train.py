@@ -47,8 +47,9 @@ class Trainer():
         self.teachertop1.reset()
         self.studenttop1.reset()
 
-        end = time.time()
+
         for i, (input, target) in enumerate(trainloader, 0):
+            end = time.time()
             #Generate fake samples
             isFakeTeacher = torch.ones(input.size(0))
 
@@ -58,9 +59,9 @@ class Trainer():
             if opt.cuda:
                 input = input.cuda(async=True)
                 target = target.cuda(async=True)
-                labels = isFakeTeacher.cuda(async=True)
+                isFakeTeacher = isFakeTeacher.cuda(async=True)
 
-            input, target_var, labels = Variable(input), Variable(target), Variable(labels)
+            input, target_var, isFakeTeacher = Variable(input), Variable(target), Variable(isFakeTeacher)
             self.data_time.update(time.time() - end)
 
             #Training the discriminator using Teacher
@@ -68,38 +69,38 @@ class Trainer():
 
             teacher_out = self.teacher(input)
             isReal, y_discriminator = self.discriminator(teacher_out)
-
+            #print(teacher_out.size(),target.size())
+            #print(target)
             teacherprec1, teacherprec5 = precision(teacher_out.data, target, topk=(1,5))
-
-            adversarialLoss = self.advCriterion(isReal,labels)
+            #print(isReal.size(),isFakeTeacher.size())
+            adversarialLoss = self.advCriterion(isReal,isFakeTeacher)
             crossentropyLoss =  self.classifyCriterion(y_discriminator,target_var)
             totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
             totalDiscLoss.backward()
             self.discOptim.step()
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.totaldisclossLog.update(totalDiscLoss.data[0], input.size(0))
 
             #Training the discriminator using student
             self.discOptim.zero_grad()
 
             isFakeStudent = 1 - isFakeTeacher
-            isFakeStudent = Variable(isFakeStudent)
 
             student_out = self.student(input)
             isReal, y_discriminator = self.discriminator(student_out.detach())  #To avoid computing gradients in Generator (smallnet)
 
             studentprec1, studentprec5 = precision(student_out.data, target, topk=(1,5))
-
-            adversarialLoss = self.advCriterion(isReal,labels)
-            crosssentropyLoss =  self.classifyCriterion(y_discriminator,target)
-            totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crosssentropyLoss
+            #print(isReal.size(),isFakeTeacher.size())
+            adversarialLoss = self.advCriterion(isReal,isFakeTeacher)
+            crossentropyLoss =  self.classifyCriterion(y_discriminator,target_var)
+            totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
             totalDiscLoss.backward()
             self.discOptim.step()
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.totaldisclossLog.update(totalDiscLoss.data[0], input.size(0))
 
             # Training the student network
@@ -108,18 +109,20 @@ class Trainer():
 
             isReal, y_discriminator = self.discriminator(student_out)  #To avoid computing gradients in Generator (smallnet)
 
-
-            # disc_loss = criterion_adv(out_discr,labels)
+            #print(isReal.size(),isFakeStudent.size())
+            # disc_loss = criterion_adv(out_discr,isFakeTeacher)
             adversarialLoss = self.advCriterion(isReal,isFakeStudent)
             reconstructionLoss = self.derivativeCriterion(student_out,teacher_out)
-            crossentropyLoss = self.classifyCriterion(y_discriminator,target)
+            crossentropyLoss = self.classifyCriterion(y_discriminator,target_var)
 
             generatorLoss = opt.weight_reconstruction * reconstructionLoss + opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
             generatorLoss.backward()
             self.studOptim.step()
 
+            self.batch_time.update(time.time() - end)
+
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.reconstructionlossLog.update(reconstructionLoss.data[0], input.size(0))
             self.generatorlossLog.update(generatorLoss.data[0], input.size(0))
             self.teachertop1.update(teacherprec1[0], input.size(0))
@@ -129,41 +132,44 @@ class Trainer():
                 print('Batch: [{0}][{1}/{2}]\t'
                 'Time {batch_time.avg:.3f} ({batch_time.sum:.3f})\t'
                 'Data {data_time.avg:.3f} ({data_time.sum:.3f})\t'
-                'Adv Loss {loss.avg:.3f}\t'
-                'CrossEnt Loss {loss.avg:.3f}\t'
-                'Reconst Loss {loss.avg:.3f}\t'
-                'TotalDisc Loss {loss.avg:.3f}\t'
-                'Generator Loss {loss.avg:.3f}\t'
-                'TeacherPrec@1 {top1.avg:.4f}\t'
-                'StudentPrec@1 {top5.avg:.4f}'.format(
+                'Adv Loss {advloss.avg:.3f}\t'
+                'CrossEnt Loss {cntloss.avg:.3f}\t'
+                'Reconst Loss {reconloss.avg:.3f}\t'
+                'TotalDisc Loss {tdiscloss.avg:.3f}\t'
+                'Generator Loss {genloss.avg:.3f}\t'
+                'TeacherPrec@1 {teachertop1.avg:.4f}\t'
+                'StudentPrec@1 {studenttop1.avg:.4f}'.format(
                 epoch, i, len(trainloader), batch_time=self.batch_time,
-                data_time=self.data_time, advloss=self.adversarialLoss,
-                cntloss=self.crossentropyLoss,reconloss=self.reconstructionLoss,
-                tdiscloss=self.totalDiscLoss,genloss=self.generatorLoss,
-                top1=self.teachertop1, top5=self.studenttop1))
+                data_time=self.data_time, advloss=self.adversariallossLog,
+                cntloss=self.crossentropylossLog,reconloss=self.reconstructionlossLog,
+                tdiscloss=self.totaldisclossLog,genloss=self.generatorlossLog,
+                teachertop1=self.teachertop1, studenttop1=self.studenttop1))
 
         # log to TensorBoard
         if opt.tensorboard:
-            self.logger.scalar_summary('train_loss', self.losses.avg, epoch)
-            self.logger.scalar_summary('train_acc', self.top1.avg, epoch)
-            self.logger.scalar_summary('train_loss', self.losses.avg, epoch)
-            self.logger.scalar_summary('train_acc', self.top1.avg, epoch)
-            self.logger.scalar_summary('train_loss',  self.teachertop1.avg, epoch)
-            self.logger.scalar_summary('train_acc', self.studenttop1.avg, epoch)
+            self.logger.scalar_summary('Adv Loss', self.adversariallossLog.avg, epoch)
+            self.logger.scalar_summary('CrossEnt Loss', self.crossentropylossLog.avg, epoch)
+            self.logger.scalar_summary('Reconst Loss', self.reconstructionlossLog.avg, epoch)
+            self.logger.scalar_summary('TotalDisc Loss', self.totaldisclossLog.avg, epoch)
+            self.logger.scalar_summary('Generator Loss',  self.generatorlossLog.avg, epoch)
+            self.logger.scalar_summary('TeacherPrec@1', self.teachertop1.avg, epoch)
+            self.logger.scalar_summary('StudentPrec@1', self.studenttop1.avg, epoch)
 
         print('Train: [{0}]\t'
         'Time {batch_time.sum:.3f}\t'
         'Data {data_time.sum:.3f}\t'
-        'Adv Loss {loss.avg:.3f}\t'
-        'CrossEnt Loss {loss.avg:.3f}\t'
-        'Reconst Loss {loss.avg:.3f}\t'
-        'TotalDisc Loss {loss.avg:.3f}\t'
-        'Generator Loss {loss.avg:.3f}\t'
-        'TeacherPrec@1 {top1.avg:.4f}\t'
-        'StudentPrec@1 {top5.avg:.4f}\t'.format(
+        'Adv Loss {advloss.avg:.3f}\t'
+        'CrossEnt Loss {cntloss.avg:.3f}\t'
+        'Reconst Loss {reconloss.avg:.3f}\t'
+        'TotalDisc Loss {tdiscloss.avg:.3f}\t'
+        'Generator Loss {genloss.avg:.3f}\t'
+        'TeacherPrec@1 {teachertop1.avg:.4f}\t'
+        'StudentPrec@1 {studenttop1.avg:.4f}\t'.format(
         epoch, batch_time=self.batch_time,
-        data_time= self.data_time, loss=self.losses,
-        top1=self.top1, top5=self.top5))
+        data_time=self.data_time, advloss=self.adversariallossLog,
+        cntloss=self.crossentropylossLog,reconloss=self.reconstructionlossLog,
+        tdiscloss=self.totaldisclossLog,genloss=self.generatorlossLog,
+        teachertop1=self.teachertop1, studenttop1=self.studenttop1))
 
 class Validator():
     def __init__(self, student, teacher, discriminator, opt, logger):
@@ -199,7 +205,7 @@ class Validator():
 
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-
+            self.batch_time.update(time.time() - end)
             #teacher_target = self.classifier(teacher_feats)
             #student_target = self.classifier(student_feats)
 
@@ -221,3 +227,5 @@ class Validator():
         epoch, batch_time=self.batch_time,
         data_time= self.data_time,
         teachertop1=self.teachertop1, studenttop1=self.studenttop1))
+
+        return self.studenttop1.avg
