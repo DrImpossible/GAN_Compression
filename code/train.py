@@ -79,7 +79,7 @@ class Trainer():
             self.discOptim.step()
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.totaldisclossLog.update(totalDiscLoss.data[0], input.size(0))
 
             #Training the discriminator using student
@@ -94,13 +94,13 @@ class Trainer():
             studentprec1, studentprec5 = precision(student_out.data, target, topk=(1,5))
 
             adversarialLoss = self.advCriterion(isReal,labels)
-            crosssentropyLoss =  self.classifyCriterion(y_discriminator,target)
-            totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crosssentropyLoss
+            crossentropyLoss =  self.classifyCriterion(y_discriminator,target_var)
+            totalDiscLoss = opt.weight_adversarial * adversarialLoss + opt.weight_classify * crossentropyLoss
             totalDiscLoss.backward()
             self.discOptim.step()
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.totaldisclossLog.update(totalDiscLoss.data[0], input.size(0))
 
             # Training the student network
@@ -120,7 +120,7 @@ class Trainer():
             self.studOptim.step()
 
             self.adversariallossLog.update(adversarialLoss.data[0], input.size(0))
-            self.crossentropylossLog.update(crosssentropyLoss.data[0], input.size(0))
+            self.crossentropylossLog.update(crossentropyLoss.data[0], input.size(0))
             self.reconstructionlossLog.update(reconstructionLoss.data[0], input.size(0))
             self.generatorlossLog.update(generatorLoss.data[0], input.size(0))
             self.teachertop1.update(teacherprec1[0], input.size(0))
