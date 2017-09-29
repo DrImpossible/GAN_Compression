@@ -6,16 +6,16 @@ class Net(nn.Module):
     def __init__(self):
         super(Net,self).__init__()
         self.model = nn.Sequential(
-            nn.Linear(10, 256),
+            nn.Linear(10, 64),
             nn.PReLU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, 512),
+            nn.Dropout(0.3),
+            nn.Linear(64, 64),
             nn.PReLU(),
             )
         self.isFake = nn.Sequential(
-                nn.Linear(512, 1),
+                nn.Linear(64, 1),
                 nn.Sigmoid())
-        self.classifier = nn.Linear(512,10)
+        self.classifier = nn.Linear(64,10)
 
 
     def forward(self,x):
