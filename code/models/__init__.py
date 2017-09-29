@@ -12,7 +12,7 @@ def setup(model, opt, type):
     if type == "discriminator":
         criterion = nn.BCELoss().cuda()
     elif type == "teacher":
-        criterion = nn.SmoothL1Loss().cuda()
+        criterion = nn.L1Loss().cuda()
     elif type == "student": #or type == "classifier":
         criterion = nn.CrossEntropyLoss(size_average=True).cuda()
 
@@ -67,7 +67,7 @@ def load_model(opt,type):
             model = student.Net()
             if opt.cuda:
                 model = model.cuda()
-            model.load_state_dict(checkpoint['state_dict'])
+            #model.load_state_dict(checkpoint['state_dict'])
         elif type == 'discriminator':
             model = discriminator.Net()
             if opt.cuda:

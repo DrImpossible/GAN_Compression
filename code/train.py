@@ -143,7 +143,7 @@ class Trainer():
 
             # Training the student network
             isReal, y_discriminator = self.discriminator(student_out)
-            studtotalLoss = self.computenlogStud(student_out, teacher_out, studentgrad_params, teachergrad_params, y_discriminator, target, isReal, isFakeStudent)
+            studtotalLoss = self.computenlogStud(student_out, teacher_out, studentgrad_params, teachergrad_params, y_discriminator, target, isReal, isFakeTeacher)
             studtotalLoss.backward()
             self.studOptim.step()
             self.studOptim.zero_grad()
