@@ -25,7 +25,7 @@ class Trainer():
         self.teachertop1 = AverageMeter()
         self.studenttop1 = AverageMeter()
         self.disctop1 = AverageMeter()
-        self.discisreal = AverageMeter()
+        #self.discisreal = AverageMeter()
 
         self.discadversariallossLog = AverageMeter()
         self.disccrossentropylossLog = AverageMeter()
@@ -38,15 +38,15 @@ class Trainer():
         self.studtotallossLog = AverageMeter()
 
     def computenlogDisc(self, y_discriminator, target, out, isCorrect):
-        self.disctop1 = precision(y_discriminator.data, target, topk=(1,))
-        self.discisreal = precision(out.data ,isCorrect.data, topk=(1,))
+        discriminatortop1 = precision(y_discriminator.data, target)
+        #discriminatorisreal = precision(out.data, isCorrect)
 
-        discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,isCorrect)
+        discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,Variable(isCorrect))
         disccrossentropyLoss =  self.opt.wdiscClassify * self.classifyCriterion(y_discriminator,Variable(target))
         disctotalLoss = discadversarialLoss + disccrossentropyLoss
 
-        self.disctop1.update(disctop1[0], target.size(0))
-        self.discisreal.update(discisreal[0], target.size(0))
+        self.disctop1.update(discriminatortop1[0], target.size(0))
+        #self.discisreal.update(discriminatorisreal[0], target.size(0))
         self.discadversariallossLog.update(discadversarialLoss.data[0], target.size(0))
         self.disccrossentropylossLog.update(disccrossentropyLoss.data[0], target.size(0))
         self.disctotallossLog.update(disctotalLoss.data[0], target.size(0))
@@ -54,24 +54,24 @@ class Trainer():
         return disctotalLoss
 
     def computenlogStud(self, student_out, teacher_out, studentgrad_params, teachergrad_params, y_discriminator, target, out, isCorrect):
-        teacherprec1 = precision(teacher_out.data, target, topk=(1,))
-        studentprec1 = precision(student_out.data, target, topk=(1,))
+        teacherprec1 = precision(teacher_out.data, target)
+        studentprec1 = precision(student_out.data, target)
 
-        discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,isCorrect)
+        discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,Variable(isCorrect))
         disccrossentropyLoss = self.opt.wdiscClassify * self.classifyCriterion(y_discriminator,Variable(target))
         studreconstructionLoss = self.opt.wstudSim * self.similarityCriterion(student_out,teacher_out.detach())
         studderivativeLoss = self.opt.wstudDeriv * self.derivativeCriterion(studentgrad_params,teachergrad_params.detach())
 
         studtotalLoss = studreconstructionLoss + studderivativeLoss + discadversarialLoss + disccrossentropyLoss
 
-        self.teachertop1.update(teacherprec1[0], input.size(0))
-        self.studenttop1.update(studentprec1[0], input.size(0))
+        self.teachertop1.update(teacherprec1[0], target.size(0))
+        self.studenttop1.update(studentprec1[0], target.size(0))
 
-        self.studadversariallossLog.update(discadversarialLoss.data[0], input.size(0))
-        self.studcrossentropylossLog.update(disccrossentropyLoss.data[0], input.size(0))
-        self.studreconstructionlossLog.update(studreconstructionLoss.data[0], input.size(0))
-        self.studderivativelossLog.update(studderivativeLoss.data[0], input.size(0))
-        self.studtotallossLog.update(studtotalLoss.data[0], input.size(0))
+        self.studadversariallossLog.update(discadversarialLoss.data[0], target.size(0))
+        self.studcrossentropylossLog.update(disccrossentropyLoss.data[0], target.size(0))
+        self.studreconstructionlossLog.update(studreconstructionLoss.data[0], target.size(0))
+        self.studderivativelossLog.update(studderivativeLoss.data[0], target.size(0))
+        self.studtotallossLog.update(studtotalLoss.data[0], target.size(0))
 
         return studtotalLoss
 
@@ -95,7 +95,7 @@ class Trainer():
         self.teachertop1.reset()
         self.studenttop1.reset()
         self.disctop1.reset()
-        self.discisreal.reset()
+        #self.discisreal.reset()
 
         self.discOptim.zero_grad()
         self.studOptim.zero_grad()
@@ -111,17 +111,17 @@ class Trainer():
             if opt.cuda:
                 input, target, isFakeTeacher = input.cuda(async=True), target.cuda(async=True), isFakeTeacher.cuda(async=True)
 
-            input, target_var, isFakeTeacher = Variable(input), Variable(target), Variable(isFakeTeacher)
+            input = Variable(input)
             isFakeStudent = 1 - isFakeTeacher
             self.data_time.update(time.time() - end)
 
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-
-            teachercrossentropyLoss =  self.classifyCriterion(teacher_out,target_var)
+            teachercrossentropyLoss =  self.classifyCriterion(teacher_out,Variable(target))
             teachergrad_params = torch.autograd.grad(teachercrossentropyLoss, self.teacher.parameters(), create_graph=True)
-            studcrossentropyLoss =  self.classifyCriterion(student_out,target_var)
+
+            studcrossentropyLoss =  self.classifyCriterion(student_out,Variable(target))
             studentgrad_params = torch.autograd.grad(studcrossentropyLoss, self.student.parameters(), create_graph=True)
             teachergrad_params,studentgrad_params = teachergrad_params[-1],studentgrad_params[-1]
 
@@ -133,6 +133,8 @@ class Trainer():
             self.discOptim.zero_grad()
 
             #Training the discriminator using student
+
+
             isReal, y_discriminator = self.discriminator(student_out.detach())  #To avoid computing gradients in Student
             disctotalLoss = self.computenlogDisc(y_discriminator, target, isReal, isFakeStudent)
             disctotalLoss.backward()
@@ -160,15 +162,15 @@ class Trainer():
                 'StudReconLoss {studreconloss.avg:.3f}\t'
                 'StudDerivLoss {studderivloss.avg:.3f}\t'
                 'StudTotalLoss {studtotloss.avg:.3f}\t'
-                'DiscPrec@1 {disctop1.avg:.4f}\t'
-                'DiscIsReal {discisreal.avg:.4f}'
+                'DiscPrec@1 {discrtop1.avg:.4f}\t'
+                #'DiscIsReal {discisreal.avg:.4f}'
                 'TeacherPrec@1 {teachertop1.avg:.4f}\t'
                 'StudentPrec@1 {studenttop1.avg:.4f}'.format(
                 epoch, i, len(trainloader), batch_time=self.batch_time,
                 data_time=self.data_time, discadvloss=self.discadversariallossLog,disccntloss=self.disccrossentropylossLog,
                 disctotloss=self.disctotallossLog,studadvloss=self.studadversariallossLog,studcntloss=self.studcrossentropylossLog,
                 studreconloss=self.studreconstructionlossLog,studderivloss=self.studderivativelossLog,studtotloss=self.studtotallossLog,
-                disctop1=self.disctop1, discisreal=self.discisreal, teachertop1=self.teachertop1, studenttop1=self.studenttop1))
+                discrtop1=self.disctop1, teachertop1=self.teachertop1, studenttop1=self.studenttop1))
 
         # log to TensorBoard
         if opt.tensorboard:
@@ -180,10 +182,10 @@ class Trainer():
             self.logger.scalar_summary('StudReconLoss', self.studreconstructionlossLog.avg, epoch)
             self.logger.scalar_summary('StudDerivLoss', self.studderivativelossLog.avg, epoch)
             self.logger.scalar_summary('StudTotalLoss', self.studtotallossLog.avg, epoch)
-            self.logger.scalar_summary('DiscPrec@1',  self.disctop1.avg, epoch)
-            self.logger.scalar_summary('DiscIsReal',  self.discisreal.avg, epoch)
-            self.logger.scalar_summary('TeacherPrec@1', self.teachertop1.avg, epoch)
-            self.logger.scalar_summary('StudentPrec@1', self.studenttop1.avg, epoch)
+            self.logger.scalar_summary('DiscPrec1',  self.disctop1.avg.type(torch.FloatTensor)[0], epoch)
+            #self.logger.scalar_summary('DiscIsReal',  self.discisreal.avg, epoch)
+            self.logger.scalar_summary('TeacherPrec1', self.teachertop1.avg.type(torch.FloatTensor)[0], epoch)
+            self.logger.scalar_summary('StudentPrec1', self.studenttop1.avg.type(torch.FloatTensor)[0], epoch)
 
         print('Train: [{0}]\t'
         'Time {batch_time.sum:.3f}\t'
@@ -196,15 +198,15 @@ class Trainer():
         'StudReconLoss {studreconloss.avg:.3f}\t'
         'StudDerivLoss {studderivloss.avg:.3f}\t'
         'StudTotalLoss {studtotloss.avg:.3f}\t'
-        'DiscPrec@1 {disctop1.avg:.4f}\t'
-        'DiscIsReal {discisreal.avg:.4f}'
-        'TeacherPrec@1 {teachertop1.avg:.4f}\t'
-        'StudentPrec@1 {studenttop1.avg:.4f}'.format(
+        'DiscPrec@1 {discrtop1:.4f}\t'
+        #'DiscIsReal {discisreal.avg:.4f}'
+        'TeacherPrec@1 {teachertop1:.4f}\t'
+        'StudentPrec@1 {studenttop1:.4f}'.format(
         epoch, batch_time=self.batch_time,
         data_time=self.data_time, discadvloss=self.discadversariallossLog,disccntloss=self.disccrossentropylossLog,
         disctotloss=self.disctotallossLog,studadvloss=self.studadversariallossLog,studcntloss=self.studcrossentropylossLog,
         studreconloss=self.studreconstructionlossLog,studderivloss=self.studderivativelossLog,studtotloss=self.studtotallossLog,
-        disctop1=self.disctop1, discisreal=self.discisreal, teachertop1=self.teachertop1, studenttop1=self.studenttop1))
+        discrtop1=self.disctop1.avg.type(torch.FloatTensor)[0], teachertop1=self.teachertop1.avg.type(torch.FloatTensor)[0], studenttop1=self.studenttop1.avg.type(torch.FloatTensor)[0]))
 
 class Validator():
     def __init__(self, student, teacher, discriminator, opt, logger):
