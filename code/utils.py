@@ -65,12 +65,9 @@ def adjust_learning_rate(opt, optimizer, epoch):
         lr = lr * (0.1 ** (epoch // 30))
     elif opt.learningratescheduler == 'cifarschedular':
         lr = opt.lr * (0.1 ** (epoch // 150)) * (0.1 ** (epoch // 225))
-    else:
-        1==1
 
     lr = max(lr,opt.minlr)
     opt.lr = lr
-
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
         param_group['weight_decay'] = wd

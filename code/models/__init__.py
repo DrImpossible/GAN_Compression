@@ -63,7 +63,7 @@ def load_model(opt,type):
             model.features = torch.nn.DataParallel(model.features)
             model.load_state_dict(checkpoint['state_dict'])
         elif type == "student":
-            checkpoint = torch.load(opt.student_filedir)
+            #checkpoint = torch.load(opt.student_filedir)
             model = student.Net()
             if opt.cuda:
                 model = model.cuda()

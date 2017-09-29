@@ -7,13 +7,10 @@ class Net(nn.Module):
         super(Net,self).__init__()
         self.model = nn.Sequential(
             nn.Linear(10, 256),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.3),
+            nn.PReLU(),
+            nn.Dropout(0.2),
             nn.Linear(256, 512),
-            nn.LeakyReLU(0.2, inplace=True),
-            nn.Dropout(0.3),
-            nn.Linear(512, 512),
-            nn.LeakyReLU(0.2, inplace=True),
+            nn.PReLU(),
             )
         self.isFake = nn.Sequential(
                 nn.Linear(512, 1),

@@ -25,7 +25,7 @@ def myargparser():
 
     #optimizer/criterion stuff
     parser.add_argument('--decayinterval', type=int, help='decays by a power of decay_var in these epochs')
-    parser.add_argument('--decaylevel', type=int, help='decays by a power of decaylevel')
+    parser.add_argument('--decaylevel', type=float, help='decays by a power of decaylevel')
     parser.add_argument('--optimType', required=True, choices=optim_choices, type=str, help='Optimizers. Options:'+str(optim_choices))
 
     parser.add_argument('--maxlr', required=True, type=float, help='initial learning rate')
@@ -41,7 +41,7 @@ def myargparser():
     #extra model stuff
     parser.add_argument('--name', required=True, type=str, help='name of experiment')
     parser.add_argument('--teacher_filedir', required=True, type=str, help='name of experiment')
-    parser.add_argument('--student_filedir', required=True, type=str, help='name of experiment')
+    parser.add_argument('--student_filedir', type=str, help='name of experiment')
 
     #default
     parser.add_argument('--cachemode', default=True, help='if cachemode')
