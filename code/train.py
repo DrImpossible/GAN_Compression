@@ -118,11 +118,11 @@ class Trainer():
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-            teachercrossentropyLoss =  self.classifyCriterion(teacher_out,Variable(target))
-            teachergrad_params = torch.autograd.grad(teachercrossentropyLoss, self.teacher.parameters(), create_graph=True)
+            teachersimLoss =  self.opt.wstudSim * self.similarityCriterion(teacher_out,student_out.detach())
+            teachergrad_params = torch.autograd.grad(teachersimLoss, self.teacher.parameters(), create_graph=True)
 
-            studcrossentropyLoss =  self.classifyCriterion(student_out,Variable(target))
-            studentgrad_params = torch.autograd.grad(studcrossentropyLoss, self.student.parameters(), create_graph=True)
+            studentsimLoss =  self.opt.wstudSim * self.similarityCriterion(student_out,teacher_out.detach())
+            studentgrad_params = torch.autograd.grad(studentsimLoss, self.student.parameters(), create_graph=True)
             teachergrad_params,studentgrad_params = teachergrad_params[-1],studentgrad_params[-1]
 
             #Training the discriminator using Teacher

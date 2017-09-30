@@ -31,8 +31,6 @@ def myargparser():
     parser.add_argument('--maxlr', required=True, type=float, help='initial learning rate')
     parser.add_argument('--lr', type=float, help='initial learning rate')
     parser.add_argument('--minlr', required=True, type=float, help='initial learning rate')
-    parser.add_argument('--smallnet_lr_init', default=100, type=int, help='total number of layers (default: 100)')
-    parser.add_argument('--discr_lr_init', default=2, type=int, help='factor to compress by')
 
     parser.add_argument('--nesterov', action='store_true', help='nesterov momentum')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum (Default: 0.9)')
