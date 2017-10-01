@@ -69,8 +69,4 @@ def load_model(opt,type):
             model = discriminator.Net()
             if opt.cuda:
                 model = model.cuda()
-        #elif type == 'classifier':
-        #    model = classifier.Net()
-        #    if opt.cuda:
-        #        model = model.cuda()
         return model

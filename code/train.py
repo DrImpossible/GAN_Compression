@@ -13,7 +13,6 @@ class Trainer():
     def __init__(self, student, teacher, discriminator, discclassifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger):
         self.opt, self.logger = opt, logger
         self.discriminator, self.student, self.teacher = discriminator, student, teacher
-        #self.classifier = classifier
         self.discclassifyCriterion = discclassifyCriterion
         self.advCriterion = advCriterion
         self.similarityCriterion = similarityCriterion
@@ -119,6 +118,8 @@ class Trainer():
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
+
+            #Normalization of losses - Check if they were mismatched first
             meanTeacher, stdTeacher = teacher_out.mean(), teacher_out.std()
             meanStudent, stdStudent = student_out.mean(), student_out.std()
             teacher_out = (teacher_out - meanTeacher)/stdTeacher
@@ -130,6 +131,12 @@ class Trainer():
             studentsimLoss =  self.opt.wstudSim * self.similarityCriterion(student_out,teacher_out.detach())
             studentgrad_params = torch.autograd.grad(studentsimLoss, self.student.parameters(), create_graph=True)
             teachergrad_params,studentgrad_params = teachergrad_params[-1],studentgrad_params[-1]
+
+            #Normalization of gradients - Check if they were mismatched first
+            meanTeachergrad, stdTeachergrad = teachergrad_params.mean(), teachergrad_params.std()
+            meanStudentgrad, stdStudentgrad = studentgrad_params.mean(), studentgrad_params.std()
+            teachergrad_params = (teachergrad_params - meanTeachergrad)/stdTeachergrad
+            studentgrad_params -= (studentgrad_params - meanStudentgrad)/stdStudentgrad
 
             #Training the discriminator using Teacher
             isReal, y_discriminator = self.discriminator(teacher_out.detach()) #To avoid computing gradients in Teacher
@@ -228,7 +235,6 @@ class Validator():
         self.teacher.eval()
         self.student.eval()
         self.discriminator.eval()
-        #self.classifier.eval()
         self.teachertop1.reset()
         self.studenttop1.reset()
         self.discriminatortop1.reset()
@@ -249,8 +255,6 @@ class Validator():
             student_out = self.student(input)
             discriminator_out = self.discriminator(student_out)
             self.batch_time.update(time.time() - end)
-            #teacher_target = self.classifier(teacher_feats)
-            #student_target = self.classifier(student_feats)
 
             teacherprec1, teacherprec5 = precision(teacher_out.data, target, topk=(1,5))
             studentprec1, studentprec5 = precision(student_out.data, target, topk=(1,5))
@@ -267,11 +271,12 @@ class Validator():
         print('Val: [{0}]\t'
         'Time {batch_time.sum:.3f}\t'
         'Data {data_time.sum:.3f}\t'
+        'DiscriminatorPrec@1 {discriminatortop1.avg:.4f}\t'
         'TeacherPrec@1 {teachertop1.avg:.4f}\t'
         'StudentPrec@1 {studenttop1.avg:.4f}\t'
-        'DiscriminatorPrec@1 {discriminatortop1.avg:.4f}\t'.format(
+        .format(
         epoch, batch_time=self.batch_time,
         data_time= self.data_time,
-        teachertop1=self.teachertop1, studenttop1=self.studenttop1, discriminatortop1=self.discriminatortop1))
+        discriminatortop1=self.discriminatortop1, teachertop1=self.teachertop1, studenttop1=self.studenttop1))
 
         return self.studenttop1.avg

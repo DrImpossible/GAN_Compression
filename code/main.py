@@ -53,10 +53,10 @@ def main():
     teacher = init.load_model(opt,'teacher')
     student = init.load_model(opt,'student')
     discriminator = init.load_model(opt,'discriminator')
-    #classifier = init.load_model(opt,'classifier')
     teacher = init.setup(teacher,opt,'teacher')
     student  = init.setup(student,opt,'student')
     discriminator  = init.setup(discriminator,opt,'discriminator')
+    
     #Write the code to classify it in the 11th class
     print(teacher)
     print(student)
