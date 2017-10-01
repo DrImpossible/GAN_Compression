@@ -1,7 +1,10 @@
+import numpy as np
 import os
 import argparse
 import copy
-import numpy as np
+import opts
+import train
+import utils
 import torch
 import torch.nn as nn
 import torch.nn.parallel
@@ -11,11 +14,7 @@ import torch.utils.data
 import torchvision.transforms as transforms
 import torchvision.datasets as datasets
 import torchvision.models as modelzoo
-import opts
-import train
-import utils
 import models.__init__ as init
-
 import mydatasets.__datainit__ as init_data
 from tensorboard_logger import Logger
 
@@ -27,6 +26,17 @@ fake_sample_range = (0.0,0.3)
 real_sample_range = (0.7,1.1)
 
 parser = opts.myargparser()
+
+def getOptim(opt,type):
+    if type=='student' and opt.studentoptimType == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr = opt.lr, momentum = opt.momentum, nesterov = opt.nesterov, weight_decay = opt.weightDecay)
+    if type=='student' and opt.studentoptimType == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr = opt.maxlr, weight_decay = opt.weightDecay)
+    if type=='discriminator' and opt.discriminatoroptimType == 'sgd':
+        optimizer = optim.SGD(model.parameters(), lr = opt.lr, momentum = opt.momentum, nesterov = opt.nesterov, weight_decay = opt.weightDecay)
+    if type=='discriminator' and opt.discriminatoroptimType == 'adam':
+        optimizer = optim.Adam(model.parameters(), lr = opt.maxlr, weight_decay = opt.weightDecay)
+    return optimizer
 
 def main():
     global opt, best_studentprec1
@@ -41,23 +51,29 @@ def main():
 
     print('Loading models...')
     teacher = init.load_model(opt,'teacher')
-    print(teacher)
     student = init.load_model(opt,'student')
-    print(student)
     discriminator = init.load_model(opt,'discriminator')
-    print(discriminator)
     #classifier = init.load_model(opt,'classifier')
-
+    teacher = init.setup(teacher,opt,'teacher')
+    student  = init.setup(student,opt,'student')
+    discriminator  = init.setup(discriminator,opt,'discriminator')
     #Write the code to classify it in the 11th class
-    teacher, similarityCriterion, timepass = init.setup(teacher,opt,'teacher')
-    student, classifyCriterion, studOptim = init.setup(student,opt,'student')
-    discriminator, advCriterion, discOptim = init.setup(discriminator,opt,'discriminator')
-    derivativeCriterion = nn.SmoothL1Loss().cuda()
-    #classifier, classifycriterion, optimizer = init.setup(classifier,opt,'classifier'
+    print(teacher)
+    print(student)
+    print(discriminator)
 
-    trainer = train.Trainer(student, teacher, discriminator,classifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
+    advCriterion = nn.BCELoss().cuda()
+    similarityCriterion = nn.L1Loss().cuda()
+    derivativeCriterion = nn.SmoothL1Loss().cuda()
+    discclassifyCriterion = nn.CrossEntropyLoss(size_average=True).cuda()
+
+    studOptim = getOptim(opt,'student')
+    discrecOptim = getOptim(opt,'discriminator')
+
+    trainer = train.Trainer(student, teacher, discriminator,discclassifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
     validator = train.Validator(student, teacher, discriminator, opt, logger)
 
+    #To update. Does not work as of now
     if opt.resume:
         if os.path.isfile(opt.resume):
             model, optimizer, opt, best_prec1 = init.resumer(opt, model, optimizer)

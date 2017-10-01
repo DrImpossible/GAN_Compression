@@ -1,30 +1,27 @@
 import torch
 import torch.nn as nn
 import torch.optim as optim
-import models.student as student
-import models.teacher as teacher
-import models.discriminator as discriminator
+import models.student as student1
+import models.student as student2
+import models.student as student3
+import models.student as student4
+import models.teacher as teacher1
+import models.teacher as teacher2
+import models.teacher as teacher3
+import models.teacher as teacher4
+import models.teacher as teacher5
+import models.discriminator as discriminator1
+import models.discriminator as discriminator2
+import models.discriminator as discriminator3
 import utils
 import os
 import shutil
 
 def setup(model, opt, type):
-    if type == "discriminator":
-        criterion = nn.BCELoss().cuda()
-    elif type == "teacher":
-        criterion = nn.L1Loss().cuda()
-    elif type == "student": #or type == "classifier":
-        criterion = nn.CrossEntropyLoss(size_average=True).cuda()
-
-    if opt.optimType == 'sgd':
-        optimizer = optim.SGD(model.parameters(), lr = opt.lr, momentum = opt.momentum, nesterov = opt.nesterov, weight_decay = opt.weightDecay)
-    elif opt.optimType == 'adam':
-        optimizer = optim.Adam(model.parameters(), lr = opt.maxlr, weight_decay = opt.weightDecay)
-
     if opt.weight_init:
         utils.weights_init(model, opt)
 
-    return model, criterion, optimizer
+    return model
 
 def save_checkpoint(opt, teacher, student, discriminator, studOptim, discOptim, best_acc, epoch):
     state = {
@@ -55,9 +52,9 @@ def resumer(opt, teacher, student, discriminator, studOptim, discOptim):
         return  teacher, student, discriminator, studOptim, discOptim, opt, best_studentprec1
 
 def load_model(opt,type):
-        if type == "teacher":
+        if type == "teacher" and opt.teacherno == 1:
             checkpoint = torch.load(opt.teacher_filedir)
-            model = teacher.Net()
+            model = teacher1.Net()
             if opt.cuda:
                 model = model.cuda()
             model.features = torch.nn.DataParallel(model.features)

@@ -10,11 +10,11 @@ import math
 import time
 
 class Trainer():
-    def __init__(self, student, teacher, discriminator, classifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger):
+    def __init__(self, student, teacher, discriminator, discclassifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger):
         self.opt, self.logger = opt, logger
         self.discriminator, self.student, self.teacher = discriminator, student, teacher
         #self.classifier = classifier
-        self.classifyCriterion = classifyCriterion
+        self.discclassifyCriterion = discclassifyCriterion
         self.advCriterion = advCriterion
         self.similarityCriterion = similarityCriterion
         self.derivativeCriterion = derivativeCriterion
@@ -42,7 +42,7 @@ class Trainer():
         #discriminatorisreal = precision(out.data, isCorrect)
 
         discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,Variable(isCorrect))
-        disccrossentropyLoss =  self.opt.wdiscClassify * self.classifyCriterion(y_discriminator,Variable(target))
+        disccrossentropyLoss =  self.opt.wdiscClassify * self.discclassifyCriterion(y_discriminator,Variable(target))
         disctotalLoss = discadversarialLoss + disccrossentropyLoss
 
         self.disctop1.update(discriminatortop1[0], target.size(0))
@@ -58,7 +58,7 @@ class Trainer():
         studentprec1 = precision(student_out.data, target)
 
         discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,Variable(isCorrect))
-        disccrossentropyLoss = self.opt.wdiscClassify  * self.classifyCriterion(y_discriminator,Variable(target))
+        disccrossentropyLoss = self.opt.wdiscClassify  * self.discclassifyCriterion(y_discriminator,Variable(target))
 
         studreconstructionLoss = self.opt.wstudSim * self.similarityCriterion(student_out,teacher_out.detach())
         studderivativeLoss = self.opt.wstudDeriv * self.derivativeCriterion(studentgrad_params,teachergrad_params.detach())
@@ -106,7 +106,7 @@ class Trainer():
 
             #Generate fake samples
             isFakeTeacher = torch.ones(input.size(0))
-            if epoch%opt.revLabelFreq == 0:
+            if ((epoch//opt.revLabelFreq) %2) == 1:
                 isFakeTeacher.fill_(0)
 
             if opt.cuda:
@@ -119,14 +119,10 @@ class Trainer():
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-            meanTeacher = teacher_out.mean()
-            stdTeacher = teacher_out.std()
-            meanStudent = student_out.mean()
-            stdStudent = student_out.std()
-            teacher_out -= meanTeacher
-            teacher_out /= stdTeacher
-            student_out -= meanStudent
-            student_out /= stdStudent
+            meanTeacher, stdTeacher = teacher_out.mean(), teacher_out.std()
+            meanStudent, stdStudent = student_out.mean(), student_out.std()
+            teacher_out = (teacher_out - meanTeacher)/stdTeacher
+            student_out -= (student_out - meanStudent)/stdStudent
 
             teachersimLoss =  self.opt.wstudSim * self.similarityCriterion(teacher_out,student_out.detach())
             teachergrad_params = torch.autograd.grad(teachersimLoss, self.teacher.parameters(), create_graph=True)
@@ -226,14 +222,16 @@ class Validator():
         self.data_time = AverageMeter()
         self.teachertop1 = AverageMeter()
         self.studenttop1 = AverageMeter()
+        self.discriminatortop1 = AverageMeter()
 
     def validate(self, valloader, epoch, opt):
         self.teacher.eval()
         self.student.eval()
-
+        self.discriminator.eval()
         #self.classifier.eval()
         self.teachertop1.reset()
         self.studenttop1.reset()
+        self.discriminatortop1.reset()
         self.data_time.reset()
         self.batch_time.reset()
 
@@ -249,27 +247,31 @@ class Validator():
 
             teacher_out = self.teacher(input)
             student_out = self.student(input)
+            discriminator_out = self.discriminator(student_out)
             self.batch_time.update(time.time() - end)
             #teacher_target = self.classifier(teacher_feats)
             #student_target = self.classifier(student_feats)
 
             teacherprec1, teacherprec5 = precision(teacher_out.data, target, topk=(1,5))
             studentprec1, studentprec5 = precision(student_out.data, target, topk=(1,5))
-
+            discriminatorprec1, discriminatorprec5 = precision(discriminator_out.data, target, topk=(1,5))
             self.teachertop1.update(teacherprec1[0], input.size(0))
             self.studenttop1.update(studentprec1[0], input.size(0))
+            self.discriminatortop1.update(discriminatorprec1[0],input.size(0))
 
         if opt.tensorboard:
             self.logger.scalar_summary('Teacher Accuracy', self.teachertop1.avg, epoch)
             self.logger.scalar_summary('Student Accuracy', self.studenttop1.avg, epoch)
+            self.logger.scalar_summary('Discriminator Accuracy', self.discriminatortop1.avg, epoch)
 
         print('Val: [{0}]\t'
         'Time {batch_time.sum:.3f}\t'
         'Data {data_time.sum:.3f}\t'
         'TeacherPrec@1 {teachertop1.avg:.4f}\t'
-        'StudentPrec@1 {studenttop1.avg:.4f}\t'.format(
+        'StudentPrec@1 {studenttop1.avg:.4f}\t'
+        'DiscriminatorPrec@1 {discriminatortop1.avg:.4f}\t'.format(
         epoch, batch_time=self.batch_time,
         data_time= self.data_time,
-        teachertop1=self.teachertop1, studenttop1=self.studenttop1))
+        teachertop1=self.teachertop1, studenttop1=self.studenttop1, discriminatortop1=self.discriminatortop1))
 
         return self.studenttop1.avg
