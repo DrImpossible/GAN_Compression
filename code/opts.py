@@ -1,6 +1,7 @@
 import argparse
 
-dset_choices = ['cifar10','cifar100','imagenet12']
+#TODO: Update the opts file properly
+dset_choices = ['svhn','cifar10','cifar100','imagenet12']
 reporttype_choices = ['acc']
 criterion_choices = ['crossentropy']
 optim_choices = ['sgd','adam']

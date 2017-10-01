@@ -94,6 +94,32 @@ std=[x/255.0 for x in [68.2, 65.4, 70.4]])
 					   ])),
 		  **kwargs)
 
+class LoadSVHN():
+	def __init__(self, opt):
+		kwargs = {
+		  'num_workers': opt.workers,
+		  'batch_size' : opt.batch_size,
+		  'shuffle' : True,
+		  'pin_memory': True}
+
+		self.train_loader = torch.utils.data.DataLoader(
+			dsets.SVHN('../data', train=True, download=True,
+					transform=transforms.Compose([
+						transforms.ToTensor(),
+						#Normalization pending
+						transforms.Normalize([0,0,0], [0,0,0])
+					   ])),
+			 **kwargs)
+
+		self.val_loader = torch.utils.data.DataLoader(
+			dsets.SVHN('../data', train=False,
+			  transform=transforms.Compose([
+						   transforms.ToTensor(),
+						   #Normalization pending
+						   transforms.Normalize([0,0,0], [0,0,0])
+					   ])),
+		  **kwargs)
+		  
 class LoadImagenet12():
 	def __init__(self, opt):
 		kwargs = {
