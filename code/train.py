@@ -58,7 +58,8 @@ class Trainer():
         studentprec1 = precision(student_out.data, target)
 
         discadversarialLoss = self.opt.wdiscAdv * self.advCriterion(out,Variable(isCorrect))
-        disccrossentropyLoss = self.opt.wdiscClassify * self.classifyCriterion(y_discriminator,Variable(target))
+        disccrossentropyLoss = self.opt.wdiscClassify  * self.classifyCriterion(y_discriminator,Variable(target))
+
         studreconstructionLoss = self.opt.wstudSim * self.similarityCriterion(student_out,teacher_out.detach())
         studderivativeLoss = self.opt.wstudDeriv * self.derivativeCriterion(studentgrad_params,teachergrad_params.detach())
 
@@ -118,6 +119,15 @@ class Trainer():
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
+            meanTeacher = teacher_out.mean()
+            stdTeacher = teacher_out.std()
+            meanStudent = student_out.mean()
+            stdStudent = student_out.std()
+            teacher_out -= meanTeacher
+            teacher_out /= stdTeacher
+            student_out -= meanStudent
+            student_out /= stdStudent
+
             teachersimLoss =  self.opt.wstudSim * self.similarityCriterion(teacher_out,student_out.detach())
             teachergrad_params = torch.autograd.grad(teachersimLoss, self.teacher.parameters(), create_graph=True)
 
@@ -133,7 +143,6 @@ class Trainer():
             self.discOptim.zero_grad()
 
             #Training the discriminator using student
-
 
             isReal, y_discriminator = self.discriminator(student_out.detach())  #To avoid computing gradients in Student
             disctotalLoss = self.computenlogDisc(y_discriminator, target, isReal, isFakeStudent)
