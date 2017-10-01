@@ -54,19 +54,21 @@ def resumer(opt, teacher, student, discriminator, studOptim, discOptim):
 def load_model(opt,type):
         if type == "teacher" and opt.teacherno == 1:
             checkpoint = torch.load(opt.teacher_filedir)
-            model = teacher1.Net()
+            model = teacher1.DenseNet3(opt.teacherlayers, opt.nclasses, opt.teachergrowth, reduction=opt.reduce,
+            bottleneck=opt.bottleneck, dropRate=opt.droprate)
             if opt.cuda:
                 model = model.cuda()
-            model.features = torch.nn.DataParallel(model.features)
+            #model.features = torch.nn.DataParallel(model.features)
             model.load_state_dict(checkpoint['state_dict'])
         elif type == "student":
             #checkpoint = torch.load(opt.student_filedir)
-            model = student.Net()
+            model = student1.DenseNet3(opt.studentlayers, opt.nclasses, opt.studentgrowth, reduction=opt.reduce,
+            bottleneck=opt.bottleneck, dropRate=opt.droprate)
             if opt.cuda:
                 model = model.cuda()
             #model.load_state_dict(checkpoint['state_dict'])
         elif type == 'discriminator':
-            model = discriminator.Net()
+            model = discriminator1.Net()
             if opt.cuda:
                 model = model.cuda()
         return model

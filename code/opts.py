@@ -56,6 +56,26 @@ def myargparser():
     parser.add_argument('--pretrained', action='store_true', help='use pre-trained model')
     parser.add_argument('--pretrained_file', default='')
 
+    #Densenet
+    parser.add_argument('--teacherlayers', required=True, type=int,
+                    help='total number of layers (default: 100)')
+    parser.add_argument('--studentlayers', required=True, type=int,
+                    help='total number of layers (default: 100)')
+    parser.add_argument('--expandSize', default=2, type=int,
+                    help='factor to compress by')
+    parser.add_argument('--teachergrowth', required=True, type=int,
+                    help='number of new channels per layer (default: 12)')
+    parser.add_argument('--studentgrowth', required=True, type=int,
+                    help='number of new channels per layer (default: 12)')
+    parser.add_argument('--droprate', default=0, type=float,
+                    help='dropout probability (default: 0.0)')
+    parser.add_argument('--no-augment', dest='augment', action='store_false',
+                    help='whether to use standard augmentation (default: True)')
+    parser.add_argument('--reduce', default=0.5, type=float,
+                    help='compression rate in transition stage (default: 0.5)')
+    parser.add_argument('--no-bottleneck', dest='bottleneck', action='store_false',
+                    help='To not use bottleneck block')
+
     #Hyperparameters
     parser.add_argument('--wdiscAdv', default=0.3, type=float, help='Weight of discrim adv loss')
     parser.add_argument('--wdiscClassify', default=0.4, type=float, help='Weight of discrim classification loss')
