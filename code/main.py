@@ -86,6 +86,7 @@ def main():
 
     for epoch in range(opt.start_epoch, opt.epochs):
         utils.adjust_learning_rate(opt, studOptim, epoch)
+        utils.adjust_learning_rate(opt, discrecOptim, epoch)
         print("Starting epoch number:",epoch+1,"Learning rate:", studOptim.param_groups[0]["lr"])
 
         if opt.testOnly == False:
