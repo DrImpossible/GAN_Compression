@@ -118,12 +118,12 @@ class Trainer():
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
-
+            print(teacher_out.size(),student_out.size())
             #Normalization of losses - Check if they were mismatched first
             meanTeacher, stdTeacher = teacher_out.mean(), teacher_out.std()
             meanStudent, stdStudent = student_out.mean(), student_out.std()
             teacher_out = (teacher_out - meanTeacher)/stdTeacher
-            student_out -= (student_out - meanStudent)/stdStudent
+            student_out = (student_out - meanStudent)/stdStudent
 
             teachersimLoss =  self.opt.wstudSim * self.similarityCriterion(teacher_out,student_out.detach())
             teachergrad_params = torch.autograd.grad(teachersimLoss, self.teacher.parameters(), create_graph=True)
@@ -136,7 +136,7 @@ class Trainer():
             meanTeachergrad, stdTeachergrad = teachergrad_params.mean(), teachergrad_params.std()
             meanStudentgrad, stdStudentgrad = studentgrad_params.mean(), studentgrad_params.std()
             teachergrad_params = (teachergrad_params - meanTeachergrad)/stdTeachergrad
-            studentgrad_params -= (studentgrad_params - meanStudentgrad)/stdStudentgrad
+            studentgrad_params = (studentgrad_params - meanStudentgrad)/stdStudentgrad
 
             #Training the discriminator using Teacher
             isReal, y_discriminator = self.discriminator(teacher_out.detach()) #To avoid computing gradients in Teacher

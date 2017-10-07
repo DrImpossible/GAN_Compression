@@ -1,4 +1,4 @@
-Namespace(acc_type='class', augment=True, batch_size=128, bottleneck=True, cachemode=True, cuda=True, data_dir='../data', dataset='cifar10', decayinterval=15, decaylevel=2.0, discriminatoroptimType='sgd', droprate=0, epochs=150, evaluate=False, from_modelzoo=False, growth=24, learningratescheduler='decayschedular', logdir='../logs/densenetbc_st_cifar10_40_12_100_12', lr=None, manualSeed=123, maxlr=0.1, minlr=0.0001, momentum=0.9, name='densenetbc_st_cifar10_40_12_100_12', nclasses=10, nesterov=False, ngpus=1, pretrained=False, pretrained_file='', printfreq=50, reduce=0.5, resume='', revLabelFreq=20, start_epoch=0, store='', student_filedir=None, studentlayers=16, studentoptimType='sgd', teacher_filedir='./pretrained_models/densenet_cifar_densenetbc_cifar10_100_24_best.pth.tar', teacherlayers=100, teacherno=1, tensorboard=True, testOnly=False, verbose=False, wdiscAdv=0.0, wdiscClassify=0.0, weightDecay=0, weight_init=False, workers=2, wstudDeriv=0.0, wstudSim=1.0)
+Namespace(acc_type='class', augment=True, batch_size=64, bottleneck=True, cachemode=True, cuda=True, data_dir='../data', dataset='cifar10', decayinterval=15, decaylevel=2.0, discriminatoroptimType='sgd', droprate=0, epochs=150, evaluate=False, from_modelzoo=False, growth=24, learningratescheduler='decayschedular', logdir='../logs/densenetbc_st_cifar10_40_12_100_12', lr=None, manualSeed=123, maxlr=0.1, minlr=0.0001, momentum=0.9, name='densenetbc_st_cifar10_40_12_100_12', nclasses=10, nesterov=False, ngpus=1, pretrained=False, pretrained_file='', printfreq=50, reduce=0.5, resume='', revLabelFreq=20, start_epoch=0, store='', student_filedir=None, studentlayers=16, studentoptimType='sgd', teacher_filedir='./pretrained_models/densenet_cifar_densenetbc_cifar10_100_24_best.pth.tar', teacherlayers=100, teacherno=1, tensorboard=True, testOnly=False, verbose=False, wdiscAdv=0.0, wdiscClassify=0.0, weightDecay=0, weight_init=False, workers=2, wstudDeriv=0.0, wstudSim=1.0)
 Loading models...
 DenseNet3 (
   (conv1): Conv2d(3, 48, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1), bias=False)
@@ -450,4 +450,5 @@ Net (
 )
 Files already downloaded and verified
 Starting epoch number: 1 Learning rate: 0.1
-torch.Size([128, 3, 32, 32]) torch.Size([128])
+torch.Size([64, 3, 32, 32]) torch.Size([64])
+torch.Size([64, 10]) torch.Size([64, 10])
