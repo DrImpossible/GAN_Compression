@@ -27,7 +27,7 @@ real_sample_range = (0.7,1.1)
 
 parser = opts.myargparser()
 
-def getOptim(opt,type):
+def getOptim(opt, model, type):
     if type=='student' and opt.studentoptimType == 'sgd':
         optimizer = optim.SGD(model.parameters(), lr = opt.lr, momentum = opt.momentum, nesterov = opt.nesterov, weight_decay = opt.weightDecay)
     if type=='student' and opt.studentoptimType == 'adam':
@@ -56,7 +56,7 @@ def main():
     teacher = init.setup(teacher,opt,'teacher')
     student  = init.setup(student,opt,'student')
     discriminator  = init.setup(discriminator,opt,'discriminator')
-    
+
     #Write the code to classify it in the 11th class
     print(teacher)
     print(student)
@@ -67,10 +67,10 @@ def main():
     derivativeCriterion = nn.SmoothL1Loss().cuda()
     discclassifyCriterion = nn.CrossEntropyLoss(size_average=True).cuda()
 
-    studOptim = getOptim(opt,'student')
-    discrecOptim = getOptim(opt,'discriminator')
+    studOptim = getOptim(opt,student,'student')
+    discrecOptim = getOptim(opt,discriminator,'discriminator')
 
-    trainer = train.Trainer(student, teacher, discriminator,discclassifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discOptim, opt, logger)
+    trainer = train.Trainer(student, teacher, discriminator,discclassifyCriterion, advCriterion, similarityCriterion, derivativeCriterion, studOptim, discrecOptim, opt, logger)
     validator = train.Validator(student, teacher, discriminator, opt, logger)
 
     #To update. Does not work as of now
@@ -86,7 +86,6 @@ def main():
 
     for epoch in range(opt.start_epoch, opt.epochs):
         utils.adjust_learning_rate(opt, studOptim, epoch)
-        utils.adjust_learning_rate(opt, discOptim, epoch)
         print("Starting epoch number:",epoch+1,"Learning rate:", studOptim.param_groups[0]["lr"])
 
         if opt.testOnly == False:
@@ -96,7 +95,7 @@ def main():
 
         student_prec1 = validator.validate(val_loader, epoch, opt)
         best_studentprec1 = max(student_prec1, best_studentprec1)
-        init.save_checkpoint(opt, teacher, student, discriminator, studOptim, discOptim, student_prec1, epoch)
+        init.save_checkpoint(opt, teacher, student, discriminator, studOptim, discrecOptim, student_prec1, epoch)
 
         print('Best accuracy: [{0:.3f}]\t'.format(best_studentprec1))
 

@@ -19,7 +19,7 @@ def myargparser():
     #other default stuff
     parser.add_argument('--epochs', required=True, type=int,help='number of total epochs to run')
     parser.add_argument('--batch-size', required=True, type=int, help='mini-batch size (default: 128)')
-    parser.add_argument('--nclasses', help='number of classes', default=0)
+    parser.add_argument('--nclasses', type=int, help='number of classes', default=0)
     parser.add_argument('--printfreq', default=50, type=int, help='print frequency (default: 10)')
     parser.add_argument('--learningratescheduler', required=True, help='print frequency (default: 10)')
     parser.add_argument('--revLabelFreq', required=True, type=int, help='print frequency (default: 10)')
@@ -27,7 +27,8 @@ def myargparser():
     #optimizer/criterion stuff
     parser.add_argument('--decayinterval', type=int, help='decays by a power of decay_var in these epochs')
     parser.add_argument('--decaylevel', type=float, help='decays by a power of decaylevel')
-    parser.add_argument('--optimType', required=True, choices=optim_choices, type=str, help='Optimizers. Options:'+str(optim_choices))
+    parser.add_argument('--studentoptimType', required=True, choices=optim_choices, type=str, help='Optimizers. Options:'+str(optim_choices))
+    parser.add_argument('--discriminatoroptimType', required=True, choices=optim_choices, type=str, help='Optimizers. Options:'+str(optim_choices))
 
     parser.add_argument('--maxlr', required=True, type=float, help='initial learning rate')
     parser.add_argument('--lr', type=float, help='initial learning rate')
@@ -57,16 +58,16 @@ def myargparser():
     parser.add_argument('--pretrained_file', default='')
 
     #Densenet
+    parser.add_argument('--teacherno', required=True, type=int,
+                    help='total number of layers (default: 100)')
     parser.add_argument('--teacherlayers', required=True, type=int,
                     help='total number of layers (default: 100)')
     parser.add_argument('--studentlayers', required=True, type=int,
                     help='total number of layers (default: 100)')
-    parser.add_argument('--expandSize', default=2, type=int,
-                    help='factor to compress by')
-    parser.add_argument('--teachergrowth', required=True, type=int,
-                    help='number of new channels per layer (default: 12)')
-    parser.add_argument('--studentgrowth', required=True, type=int,
-                    help='number of new channels per layer (default: 12)')
+    #parser.add_argument('--expandSize', default=2, type=int,
+    #                help='factor to compress by')
+    parser.add_argument('--growth', required=True, type=int,
+                    help='number of new channels per layer (default: 24)')
     parser.add_argument('--droprate', default=0, type=float,
                     help='dropout probability (default: 0.0)')
     parser.add_argument('--no-augment', dest='augment', action='store_false',

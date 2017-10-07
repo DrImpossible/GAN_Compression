@@ -114,7 +114,7 @@ class Trainer():
             input = Variable(input)
             isFakeStudent = 1 - isFakeTeacher
             self.data_time.update(time.time() - end)
-
+            print(input.size(),target.size())
             #Forward-passing the Teacher and the Student
             teacher_out = self.teacher(input)
             student_out = self.student(input)
